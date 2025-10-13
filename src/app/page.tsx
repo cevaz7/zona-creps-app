@@ -17,7 +17,7 @@ export default async function Home() {
       <h1>Prueba Firestore (Server Component)</h1>
       <ul>
         {data.length > 0 ? (
-          data.map((doc: any) => <li key={doc.id}>{doc.name}</li>)
+          data.map((doc: any) => <li key={doc.id}>{doc.name},{doc.lastname}</li>)
         ) : (
           <li>No hay datos</li>
         )}
