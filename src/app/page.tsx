@@ -1,27 +1,34 @@
 // src/app/page.tsx
 import { db } from "../../firebase/config";
 import { collection, getDocs } from "firebase/firestore";
+import Header from "./components/Header";
+import Hero from "./components/Hero";
+import MenuSection from "./components/MenuSection";
+import AboutSection from "./components/AboutSection";
+import Footer from "./components/Footer";
 
 // Función para obtener datos de Firestore
 async function getData() {
-  const snapshot = await getDocs(collection(db, "test")); // tu colección
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const snapshot = await getDocs(collection(db, "test"));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    return [];
+  }
 }
 
-// Componente de la página (Server Component)
+// Componente de la página principal
 export default async function Home() {
-  const data = await getData(); // Puedes usar await directo en Server Component
+  const data = await getData();
 
   return (
-    <div>
-      <h1>Prueba Firestore (Server Component)</h1>
-      <ul>
-        {data.length > 0 ? (
-          data.map((doc: any) => <li key={doc.id}>{doc.name} {doc.lastname}</li>)
-        ) : (
-          <li>No hay datos</li>
-        )}
-      </ul>
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 to-amber-50">
+      <Header />
+      <Hero />
+      <MenuSection />
+      <AboutSection />
+      <Footer />
     </div>
   );
 }
