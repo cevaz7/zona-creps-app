@@ -1,11 +1,11 @@
 // src/app/page.tsx
 import { db } from "../../firebase/config";
 import { collection, getDocs } from "firebase/firestore";
-import Header from "./components/Header";
-import Hero from "./components/Hero";
-import MenuSection from "./components/MenuSection";
-import AboutSection from "./components/AboutSection";
-import Footer from "./components/Footer";
+import Header from "../components/Header";
+import Hero from "../components/Hero";
+import MenuSection from "../components/MenuSection";
+import AboutSection from "../components/AboutSection";
+import Footer from "../components/Footer";
 
 // Función para obtener datos de Firestore
 async function getData() {
