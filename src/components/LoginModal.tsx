@@ -23,7 +23,6 @@ export default function LoginModal({ onClose }: Props) {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
         // Aquí podrías añadir lógica para crear un documento de usuario en Firestore
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -33,13 +32,17 @@ export default function LoginModal({ onClose }: Props) {
         email: user.email,
         role: "user", // por defecto todos son usuarios normales
         createdAt: new Date()
-  });
+        });
       }
       onClose(); // Cierra el modal al tener éxito
     } catch (err: any) {
-      setError(err.message.includes('auth/invalid-credential') 
-        ? 'Credenciales incorrectas.' 
-        : 'Ocurrió un error.');
+      console.error("Error al registrar o iniciar sesión:", err);
+      setError(err.message.includes('auth/invalid-credential')
+        ? 'Credenciales incorrectas.'
+        : err.message.includes('auth/email-already-in-use')
+          ? 'El correo ya está registrado.'
+          : 'Ocurrió un error inesperado.'
+      );
     }
   };
 
