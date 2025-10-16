@@ -1,3 +1,4 @@
+import { db } from "../../firebase/config";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
