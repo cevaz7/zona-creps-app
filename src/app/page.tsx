@@ -1,33 +1,44 @@
-// src/app/page.tsx
-import { db } from "../../firebase/config";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
 import MenuSection from "../components/MenuSection";
 import AboutSection from "../components/AboutSection";
 import Footer from "../components/Footer";
+import { Producto } from "@/interfaces/Product";
 
-// Función para obtener datos de Firestore
-async function getData() {
+async function getProducts(): Promise<Producto[]> {
   try {
-    const snapshot = await getDocs(collection(db, "test"));
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const productsRef = collection(db, "products"); // Asumimos que tu colección se llama 'products'
+    const q = query(productsRef, where("disponible", "==", true)); // Traemos solo los productos disponibles
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      console.log("No se encontraron productos.");
+      return [];
+    }
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Producto[];
+
   } catch (error) {
-    console.error("Error fetching data:", error);
+    console.error("Error al obtener los productos:", error);
     return [];
   }
 }
 
-// Componente de la página principal
 export default async function Home() {
-  const data = await getData();
+  const products = await getProducts();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 to-amber-50">
+    <div className="min-h-screen bg-brand-cream">
       <Header />
-      <Hero />
-      <MenuSection />
-      <AboutSection />
+      <main>
+        <Hero />
+        <MenuSection productos={products} />
+        <AboutSection />
+      </main>
       <Footer />
     </div>
   );

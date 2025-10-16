@@ -1,7 +1,22 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat, Playfair_Display } from "next/font/google";
 import "./globals.css";
+
+// Configuración de la fuente para el cuerpo del texto
+const montserrat = Montserrat({ 
+  subsets: ["latin"],
+  weight: ['400', '700'],
+  variable: '--font-montserrat', // Asignamos una variable CSS
+});
+
+// Configuración de la fuente para los títulos
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  weight: ['700', '900'],
+  variable: '--font-playfair-display', // Asignamos una variable CSS
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,9 +29,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ZonafCreeps - Deliciosos Crepes y Postres",
-  description: "Descubre los crepes y postres más deliciosos preparados con ingredientes frescos y de la más alta calidad.",
+  title: "Zona Crep's - Un viaje de sabores..!",
+  description: "La mejor experiencia en crepes, waffles, helados y más.",
 };
+
 
 export default function RootLayout({
   children,
@@ -25,9 +41,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+       <body className={`${montserrat.variable} ${playfairDisplay.variable} font-body bg-brand-cream`}>
         {children}
       </body>
     </html>
