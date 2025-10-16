@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Montserrat, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 
 // Configuración de la fuente para el cuerpo del texto
 const montserrat = Montserrat({ 
@@ -29,7 +30,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zona Crep's - Un viaje de sabores..!",
+  title: "ZonaF Crep's - Un viaje de sabores..!",
   description: "La mejor experiencia en crepes, waffles, helados y más.",
 };
 
@@ -42,7 +43,10 @@ export default function RootLayout({
   return (
     <html lang="es">
        <body className={`${montserrat.variable} ${playfairDisplay.variable} font-body bg-brand-cream`}>
-        {children}
+        {/* --- 2. ENVOLVEMOS LA APLICACIÓN --- */}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

@@ -9,7 +9,7 @@ import { Producto } from "@/interfaces/Product";
 
 async function getProducts(): Promise<Producto[]> {
   try {
-    const productsRef = collection(db, "products"); // Asumimos que tu colección se llama 'products'
+    const productsRef = collection(db, "products"); 
     const q = query(productsRef, where("disponible", "==", true)); // Traemos solo los productos disponibles
     const snapshot = await getDocs(q);
     
