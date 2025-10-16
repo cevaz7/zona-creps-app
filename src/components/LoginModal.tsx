@@ -25,6 +25,15 @@ export default function LoginModal({ onClose }: Props) {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
         // Aquí podrías añadir lógica para crear un documento de usuario en Firestore
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Guardar el documento del usuario en Firestore
+        await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        role: "user", // por defecto todos son usuarios normales
+        createdAt: new Date()
+  });
       }
       onClose(); // Cierra el modal al tener éxito
     } catch (err: any) {
