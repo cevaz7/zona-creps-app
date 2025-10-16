@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from "../../firebase/config";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../../firebase/config";
 
 interface Props {
   onClose: () => void;
