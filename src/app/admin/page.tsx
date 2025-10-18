@@ -7,24 +7,19 @@ import { signOut } from 'firebase/auth';
 import { auth } from "../../../firebase/config";
 import ProductManager from '@/components/ProductManager';
 import { useUserRole } from "../../hooks/useUserRole"; // <-- Importamos el hook de rol
+import Header from "../../components/Header";
 
 function AdminDashboard() {
   return (
-    <div className="p-4 sm:p-8 bg-brand-cream min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 pb-4 border-b border-brand-gold">
-          <h1 className="font-display text-3xl sm:text-4xl text-brand-brown mb-2 sm:mb-0">Dashboard de Productos</h1>
-          <button 
-            onClick={() => signOut(auth)}
-            className="bg-brand-blue text-white font-bold py-2 px-6 rounded-lg hover:bg-opacity-90 transition-colors"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
+    <div className="min-h-screen bg-brand-cream">
+      
+        
+          <Header />
+        
 
         <ProductManager />
 
-      </div>
+      
     </div>
   );
 }
