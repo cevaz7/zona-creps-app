@@ -1,19 +1,15 @@
-"use client"; // Mantenemos "use client" si Header o Hero lo necesitan
+// src/app/tienda/page.tsx
+"use client";
 
-import { db } from "../../firebase/config";
+import { db } from "../../../firebase/config";; // Ajusta la ruta si es necesario
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import Header from "../components/Header";
-import Hero from "../components/Hero";
-import MenuSection from "../components/MenuSection";
-import AboutSection from "../components/AboutSection";
-import Footer from "../components/Footer";
-import { Producto, Categoria } from "@/interfaces/Product"; // Importamos Categoria
+import Header from "@/components/Header"; // Usamos alias de ruta
+import Footer from "@/components/Footer";
+import MenuSection from "@/components/MenuSection";
+import { Producto, Categoria } from "@/interfaces/Product";
 import { useEffect, useState } from "react";
 
-// --- (Quitamos async/await de la función principal) ---
-// Los datos se cargarán en el cliente para que la página sea interactiva
-
-export default function Home() {
+export default function TiendaPage() {
   const [products, setProducts] = useState<Producto[]>([]);
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,13 +62,10 @@ export default function Home() {
     <div className="min-h-screen bg-brand-cream">
       <Header />
       <main>
-        <Hero />
-        {/* Pasamos los productos y categorías al componente del menú */}
+        {/* Usamos el mismo componente MenuSection que ya tienes */}
         <MenuSection productos={products} categorias={categories} loading={loading} />
-        <AboutSection />
       </main>
       <Footer />
     </div>
   );
 }
-

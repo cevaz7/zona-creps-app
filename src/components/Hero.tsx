@@ -1,4 +1,6 @@
 // src/components/Hero.tsx
+import Link from 'next/link'; // 1. Importar Link
+
 export default function Hero() {
   return (
     <section className="relative bg-brand-blue text-white py-24 md:py-32">
@@ -13,15 +15,16 @@ export default function Hero() {
           <a href="#menu" className="bg-brand-red text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-red-700 transition-colors shadow-xl">
             Ver Menú
           </a>
-          <button className="border-2 border-brand-gold text-brand-gold px-8 py-4 rounded-full font-bold text-lg hover:bg-brand-gold hover:text-brand-blue transition-colors">
+          
+          {/* 2. Cambiar <button> por <Link> */}
+          <Link href="/tienda" className="border-2 border-brand-gold text-brand-gold px-8 py-4 rounded-full font-bold text-lg hover:bg-brand-gold hover:text-brand-blue transition-colors">
             Pedir Ahora
-          </button>
+          </Link>
+          
         </div>
       </div>
       
-      {/* Overlay sutil para oscurecer una futura imagen de fondo */}
       <div className="absolute top-0 left-0 w-full h-full bg-black/30"></div>
-       {/* Aquí podrías agregar una imagen de fondo en el futuro */}
     </section>
   );
 }

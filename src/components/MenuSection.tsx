@@ -2,24 +2,26 @@
 "use client";
 
 import { useState } from 'react';
-import { Producto } from '@/interfaces/Product'; // Importamos nuestra interfaz
-import ProductCard from './ProductCard'; // Importamos el nuevo componente
-
-// Las categorías ahora pueden venir de los propios productos
-const categories = [
-  'Todos', 'Crepes de Chocolate', 'Crepes de Nutella', 'Crepes de Sal', 'Waffles', 'Milkshakes', 'Café', 'Helados'
-];
+import { Producto, Categoria } from '@/interfaces/Product';
+import ProductCard from './ProductCard';
+import Link from 'next/link'; // Importamos Link para la navegación
 
 interface Props {
-  productos: Producto[]; // Recibimos los productos como props
+  productos: Producto[];
+  categorias: Categoria[]; // Recibimos las categorías dinámicas
+  loading: boolean;
 }
 
-export default function MenuSection({ productos }: Props) {
+export default function MenuSection({ productos, categorias, loading }: Props) {
   const [activeCategory, setActiveCategory] = useState('Todos');
 
+  // Filtramos por el ID de la categoría, no por el nombre
   const filteredItems = activeCategory === 'Todos' 
-    ? productos
-    : productos.filter(item => item.categoria === activeCategory);
+    ? productos 
+    : productos.filter(item => item.categoriaId === activeCategory);
+
+  // Creamos la lista completa de botones de filtro
+  const allCategories = [{ id: 'Todos', nombre: 'Todos' }, ...categorias];
 
   return (
     <section id="menu" className="py-20 bg-brand-cream">
@@ -33,27 +35,36 @@ export default function MenuSection({ productos }: Props) {
           </p>
         </div>
 
+        {/* Filtros de categorías dinámicos */}
         <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-12">
-          {categories.map(category => (
+          {allCategories.map(category => (
             <button
-              key={category}
-              onClick={() => setActiveCategory(category)}
+              key={category.id}
+              onClick={() => setActiveCategory(category.id)}
               className={`px-6 py-2 rounded-full font-bold transition-all duration-300 text-sm md:text-base ${
-                activeCategory === category
+                activeCategory === category.id
                   ? 'bg-brand-brown text-white shadow-md'
                   : 'bg-white text-brand-brown hover:bg-brand-gold hover:text-brand-blue'
               }`}
             >
-              {category}
+              {category.nombre}
             </button>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredItems.map(item => (
-            <ProductCard key={item.id} producto={item} />
-          ))}
-        </div>
+        {/* Grid de productos */}
+        {loading ? (
+          <p className="text-center text-brand-brown font-display text-2xl">Cargando delicias...</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredItems.map(item => (
+              // Envolvemos la tarjeta en un Link que lleva a la página de detalle
+              <Link href={`/producto/${item.id}`} key={item.id} className="h-full">
+                <ProductCard producto={item} />
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
