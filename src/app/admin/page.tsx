@@ -17,7 +17,9 @@ function AdminDashboard() {
           <Header />
         
 
-        <ProductManager />
+          <div className="pt-24">
+            <ProductManager />
+          </div>
 
       
     </div>

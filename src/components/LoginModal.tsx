@@ -116,14 +116,20 @@ export default function LoginModal({ onClose }: Props) {
       onClose();
     } catch (err: any) {
       console.error("Error al registrar o iniciar sesión:", err);
-      setError(err.message.includes('auth/invalid-credential')
-        ? 'Credenciales incorrectas.'
-        : err.message.includes('auth/email-already-in-use')
-          ? 'El correo ya está registrado.'
-          : err.message.includes('auth/weak-password')
-            ? 'La contraseña es muy débil.'
-            : 'Ocurrió un error inesperado.'
-      );
+      
+      if (err.code === 'auth/invalid-credential') {
+        setError('Credenciales incorrectas. Si te registraste con Google, usa "Continuar con Google".');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('Este email ya está registrado con Google. Por favor, usa "Continuar con Google" para iniciar sesión.');
+      } else if (err.code === 'auth/user-not-found') {
+        setError('No existe una cuenta con este email. Regístrate primero.');
+      } else if (err.code === 'auth/wrong-password') {
+        setError('Contraseña incorrecta. Si te registraste con Google, usa "Continuar con Google".');
+      } else if (err.code === 'auth/weak-password') {
+        setError('La contraseña debe tener al menos 6 caracteres.');
+      } else {
+        setError('Ocurrió un error inesperado.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -160,10 +166,10 @@ export default function LoginModal({ onClose }: Props) {
         <div className="absolute inset-1 rounded-xl border border-[#B39C4D]/20"></div>
         
         {/* Contenido - Reducir padding y márgenes */}
-        <div className="relative p-5">
+        <div className="relative p-3">
           {/* Header con logo más pequeño */}
-          <div className="text-center mb-3">
-            <div className="relative mb-3">
+          <div className="text-center mb-1">
+            <div className="relative mb-1">
               <img 
                 src="/logos/3d logo crepes.png" 
                 alt="Zonaf Creps" 
