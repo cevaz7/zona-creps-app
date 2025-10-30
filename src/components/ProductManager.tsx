@@ -120,7 +120,7 @@ export default function ProductManager() {
   return (
     <div>
       {/* --- NAVEGACIÓN PRINCIPAL DEL ADMIN --- */}
-      <div className="flex gap-2 mb-6 border-b pb-2">
+      <div className="flex gap-2 mb-6 border-b pb-2 pl-4">
         <button onClick={() => setView('list')} className={`py-2 px-4 rounded-lg font-bold ${view === 'list' ? 'bg-brand-blue text-white' : 'bg-gray-200'}`}>
           Productos
         </button>

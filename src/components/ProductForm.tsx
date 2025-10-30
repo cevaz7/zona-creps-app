@@ -1,10 +1,10 @@
-// src/components/ProductForm.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db } from "../../firebase/config"; // <-- RUTA CORREGIDA
+import { db } from "../../firebase/config";
 import { collection, addDoc, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { Producto, Categoria, OptionGroup,LinkedOption } from '@/interfaces/Product';
+import { Producto, Categoria, OptionGroup, LinkedOption } from '@/interfaces/Product';
+import { uploadImageToCloudinary } from "@/utils/uploadImageToCloudinary";
 
 interface Props {
   productToEdit: Producto | null;
@@ -16,7 +16,7 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     nombre: '',
     descripcion: '',
     precioBase: 0,
-    imagenUrl: '', // Dejado como texto plano como solicitaste
+    imagenUrl: '',
     categoriaId: '',
     categoriaNombre: '',
     disponible: true,
@@ -26,11 +26,33 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     esCombo: false,
     linkedOptions: []
   });
+
   const [allCategories, setAllCategories] = useState<Categoria[]>([]);
   const [allOptionGroups, setAllOptionGroups] = useState<OptionGroup[]>([]);
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Cargar categorías y grupos de opciones al montar el formulario
+  // 🔹 FUNCIÓN SEPARADA PARA MANEJAR LA SUBIDA DE IMAGEN
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setImageFile(file);
+    
+    if (file) {
+      setUploadingImage(true);
+      try {
+        const uploadedUrl = await uploadImageToCloudinary(file);
+        setFormData(prev => ({ ...prev, imagenUrl: uploadedUrl }));
+      } catch (err) {
+        console.error("Error subiendo imagen:", err);
+        alert("Error al subir la imagen");
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+  };
+
+  // Cargar categorías y grupos de opciones
   useEffect(() => {
     const unsubCategories = onSnapshot(collection(db, 'categories'), (snapshot) => {
       setAllCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Categoria)));
@@ -51,22 +73,19 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       const { checked } = e.target as HTMLInputElement;
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else {
-      // Si el campo es un precio, guardarlo como número
       if (name === 'precioBase' || name === 'precioPromocional') {
-        // Usamos parseFloat para aceptar decimales (ej. 1.50)
-        // || 0 para evitar que el valor sea NaN si el campo está vacío
         setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
       } else {
-        // De lo contrario, guardarlo como texto
         setFormData(prev => ({ ...prev, [name]: value }));
       }
     }
   };
+
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const categoryId = e.target.value;
     const category = allCategories.find(c => c.id === categoryId);
@@ -77,7 +96,7 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     }));
   };
 
- const handleOptionGroupToggle = (group: OptionGroup) => {
+  const handleOptionGroupToggle = (group: OptionGroup) => {
     setFormData(prev => {
       const currentOptions = prev.linkedOptions || [];
       const isSelected = currentOptions.some(opt => opt.groupId === group.id);
@@ -86,49 +105,30 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
       if (isSelected) {
         newLinkedOptions = currentOptions.filter(opt => opt.groupId !== group.id);
       } else {
-        // Añadimos el grupo con CERO sub-opciones incluidas por defecto
         newLinkedOptions = [...currentOptions, {
           groupId: group.id,
           groupTitle: group.titulo,
-          includedSubOptions: [] // ¡Usamos el nuevo array!
+          includedSubOptions: []
         }];
       }
       return { ...prev, linkedOptions: newLinkedOptions };
     });
   };
 
-    const handleIncludedSubOptionToggle = (groupId: string, subOptionName: string) => {
+  const handleIncludedSubOptionToggle = (groupId: string, subOptionName: string) => {
     setFormData(prev => {
       const currentOptions = prev.linkedOptions || [];
       const newLinkedOptions = currentOptions.map(link => {
         if (link.groupId === groupId) {
           const currentIncluded = link.includedSubOptions || [];
           const isIncluded = currentIncluded.includes(subOptionName);
-          let newIncluded: string[];
-
-          if (isIncluded) {
-            // Si estaba marcada, la quitamos del array
-            newIncluded = currentIncluded.filter(name => name !== subOptionName);
-          } else {
-            // Si no estaba, la añadimos al array
-            newIncluded = [...currentIncluded, subOptionName];
-          }
+          const newIncluded = isIncluded
+            ? currentIncluded.filter(name => name !== subOptionName)
+            : [...currentIncluded, subOptionName];
           return { ...link, includedSubOptions: newIncluded };
         }
         return link;
       });
-      return { ...prev, linkedOptions: newLinkedOptions };
-    });
-  };
-  // Se activa cuando el admin cambia el número de "incluidos"
-  const handleIncludedCountChange = (groupId: string, count: number) => {
-    setFormData(prev => {
-      const currentOptions = prev.linkedOptions || [];
-      const newLinkedOptions = currentOptions.map(opt => 
-        opt.groupId === groupId 
-          ? { ...opt, includedCount: Math.max(0, count) } // Evitamos números negativos
-          : opt
-      );
       return { ...prev, linkedOptions: newLinkedOptions };
     });
   };
@@ -137,49 +137,65 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     e.preventDefault();
     setLoading(true);
 
+    // 🔹 PREPARAR DATOS CON LA URL ACTUAL (ya se actualizó en handleImageChange)
     const productData = { 
       ...formData,
       precioBase: Number(formData.precioBase) || 0,
       precioPromocional: Number(formData.precioPromocional) || 0
     };
-    
+
     try {
       if (productToEdit) {
-        // Editar producto existente
         const productRef = doc(db, 'products', productToEdit.id);
         await setDoc(productRef, productData);
       } else {
-        // Crear nuevo producto
         await addDoc(collection(db, 'products'), productData);
       }
-      setLoading(false);
       onClose();
     } catch (error) {
       console.error("Error al guardar el producto: ", error);
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="p-8 bg-white rounded-xl shadow-lg max-w-2xl mx-auto">
-      <h2 className="font-display text-3xl text-brand-brown mb-6">{productToEdit ? 'Editar' : 'Crear'} Producto</h2>
+      <h2 className="font-display text-3xl text-brand-brown mb-6">
+        {productToEdit ? 'Editar' : 'Crear'} Producto
+      </h2>
+      
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-bold text-gray-700">Nombre del Producto</label>
           <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} className="w-full mt-1 p-2 border rounded" required />
         </div>
+
         <div>
           <label className="block text-sm font-bold text-gray-700">Descripción</label>
           <textarea name="descripcion" value={formData.descripcion} onChange={handleChange} className="w-full mt-1 p-2 border rounded"></textarea>
         </div>
+
         <div>
           <label className="block text-sm font-bold text-gray-700">Precio Base ($)</label>
           <input type="number" name="precioBase" value={formData.precioBase} step="0.01" onChange={handleChange} className="w-full mt-1 p-2 border rounded" required />
         </div>
+
+        {/* 🔹 CAMPO DE IMAGEN MEJORADO */}
         <div>
-          <label className="block text-sm font-bold text-gray-700">URL de la Imagen (temporal)</label>
-          <input type="text" name="imagenUrl" value={formData.imagenUrl} onChange={handleChange} placeholder="https://..." className="w-full mt-1 p-2 border rounded" />
+          <label className="block text-sm font-bold text-gray-700">Imagen del Producto</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="w-full mt-1 p-2 border rounded"
+          />
+          {uploadingImage && <p className="text-sm text-gray-500 mt-1">Subiendo imagen...</p>}
+          {formData.imagenUrl && (
+            <img src={formData.imagenUrl} alt="Vista previa" className="w-32 h-32 object-cover mt-2 rounded-lg" />
+          )}
         </div>
+
         <div>
           <label className="block text-sm font-bold text-gray-700">Categoría</label>
           <select name="categoriaId" value={formData.categoriaId} onChange={handleCategoryChange} className="w-full mt-1 p-2 border rounded" required>
@@ -190,12 +206,14 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
 
         <hr className="my-4" />
         <h3 className="text-xl font-bold text-brand-blue">Opciones Adicionales</h3>
+
         <div className="grid grid-cols-2 gap-4">
           <label className="flex items-center space-x-2"><input type="checkbox" name="disponible" checked={formData.disponible} onChange={handleChange} /> <span>Disponible</span></label>
           <label className="flex items-center space-x-2"><input type="checkbox" name="productoDelDia" checked={formData.productoDelDia} onChange={handleChange} /> <span>Producto del Día</span></label>
           <label className="flex items-center space-x-2"><input type="checkbox" name="esCombo" checked={formData.esCombo} onChange={handleChange} /> <span>Es un Combo</span></label>
           <label className="flex items-center space-x-2"><input type="checkbox" name="enPromocion" checked={formData.enPromocion} onChange={handleChange} /> <span>En Promoción</span></label>
         </div>
+
         {formData.enPromocion && (
           <div>
             <label className="block text-sm font-bold text-gray-700">Precio Promocional ($)</label>
@@ -203,12 +221,9 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
           </div>
         )}
 
-       <hr className="my-4" />
-        {/* --- ¡SECCIÓN DEL FORMULARIO ACTUALIZADA! --- */}
-       <h3 className="text-xl font-bold text-brand-blue">Vincular Grupos de Opciones</h3>
-        <p className="text-sm text-gray-600 mb-2">
-          Marca un grupo para vincularlo. Luego, marca las sub-opciones que serán <strong>gratuitas</strong> (incluidas) para este producto.
-        </p>
+        {/* Sección de grupos de opciones */}
+        <hr className="my-4" />
+        <h3 className="text-xl font-bold text-brand-blue">Vincular Grupos de Opciones</h3>
         <div className="space-y-4">
           {allOptionGroups.map(group => {
             const linkedOption = (formData.linkedOptions || []).find(opt => opt.groupId === group.id);
@@ -216,19 +231,15 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
 
             return (
               <div key={group.id} className="p-3 border rounded-lg bg-gray-50">
-                {/* 1. CHECKBOX PARA VINCULAR EL GRUPO ENTERO */}
-                <div className="flex justify-between items-center">
-                  <label className="flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
-                      checked={isSelected} 
-                      onChange={() => handleOptionGroupToggle(group)}
-                    /> 
-                    <span className="font-semibold text-lg">{group.titulo}</span>
-                  </label>
-                </div>
-                
-                {/* 2. SI EL GRUPO ESTÁ VINCULADO, MOSTRAMOS SUS SUB-OPCIONES */}
+                <label className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    checked={isSelected} 
+                    onChange={() => handleOptionGroupToggle(group)}
+                  /> 
+                  <span className="font-semibold text-lg">{group.titulo}</span>
+                </label>
+
                 {isSelected && (
                   <div className="mt-3 pl-6 border-l-2 border-brand-gold">
                     <p className="text-sm font-bold text-gray-600 mb-2">Marcar opciones incluidas (gratis):</p>
@@ -237,9 +248,7 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
                         <label key={subOpt.nombre} className="flex items-center space-x-2 text-sm">
                           <input 
                             type="checkbox"
-                            // Verificamos si el nombre está en nuestro array de 'includedSubOptions'
                             checked={(linkedOption.includedSubOptions || []).includes(subOpt.nombre)}
-                            // Al cambiar, llamamos a la nueva función
                             onChange={() => handleIncludedSubOptionToggle(group.id, subOpt.nombre)}
                           />
                           <span>{subOpt.nombre} (+${subOpt.precioAdicional.toFixed(2)})</span>
@@ -255,7 +264,7 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
 
         <div className="flex justify-end gap-4 pt-4">
           <button type="button" onClick={onClose} disabled={loading} className="py-2 px-4 bg-gray-200 rounded-lg">Cancelar</button>
-          <button type="submit" disabled={loading} className="py-2 px-6 bg-brand-red text-white font-bold rounded-lg hover:bg-red-700">
+          <button type="submit" disabled={loading || uploadingImage} className="py-2 px-6 bg-brand-red text-white font-bold rounded-lg hover:bg-red-700">
             {loading ? 'Guardando...' : 'Guardar Producto'}
           </button>
         </div>
@@ -263,3 +272,5 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     </div>
   );
 }
+
+
