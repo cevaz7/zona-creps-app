@@ -56,6 +56,9 @@ export default function LoginModal({ onClose }: Props) {
       setIsGoogleLoading(true);
       setError('');
       
+      // Pequeño delay para evitar conflictos con animaciones
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
@@ -63,6 +66,9 @@ export default function LoginModal({ onClose }: Props) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
+      console.log('✅ Usuario autenticado con Google:', user.email);
+
+      // Verificar si el usuario ya existe en Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid));
       
       if (!userDoc.exists()) {
@@ -75,19 +81,36 @@ export default function LoginModal({ onClose }: Props) {
           createdAt: new Date(),
           lastLogin: new Date()
         });
+        console.log('✅ Nuevo usuario creado en Firestore');
       } else {
         await setDoc(doc(db, "users", user.uid), {
           lastLogin: new Date()
         }, { merge: true });
+        console.log('✅ Usuario actualizado en Firestore');
       }
 
-      onClose();
+      // Esperar un poco antes de cerrar para asegurar que todo se complete
+      setTimeout(() => {
+        onClose();
+      }, 500);
+
     } catch (err: any) {
-      console.error("Error al iniciar sesión con Google:", err);
-      setError(err.message.includes('auth/popup-closed-by-user')
-        ? 'El inicio de sesión fue cancelado.'
-        : 'Error al iniciar sesión con Google. Intenta nuevamente.'
-      );
+      console.error("❌ Error completo Google auth:", err);
+      
+      // Manejo específico de errores
+      if (err.code === 'auth/popup-closed-by-user') {
+        console.log('Usuario cerró la ventana de Google');
+        // No mostrar error si el usuario cerró la ventana
+        setError('');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('El popup fue bloqueado. Permite popups para este sitio.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Error de conexión. Verifica tu internet.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError('Dominio no autorizado. Agrega localhost a dominios autorizados en Firebase.');
+      } else {
+        setError('Error al iniciar sesión con Google. Intenta nuevamente.');
+      }
     } finally {
       setIsGoogleLoading(false);
     }
@@ -101,6 +124,7 @@ export default function LoginModal({ onClose }: Props) {
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
+        console.log('✅ Login exitoso con email');
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -112,10 +136,16 @@ export default function LoginModal({ onClose }: Props) {
           createdAt: new Date(),
           lastLogin: new Date()
         });
+        console.log('✅ Usuario registrado con email');
       }
-      onClose();
+      
+      // Esperar antes de cerrar
+      setTimeout(() => {
+        onClose();
+      }, 500);
+      
     } catch (err: any) {
-      console.error("Error al registrar o iniciar sesión:", err);
+      console.error("❌ Error auth:", err);
       
       if (err.code === 'auth/invalid-credential') {
         setError('Credenciales incorrectas. Si te registraste con Google, usa "Continuar con Google".');
@@ -127,6 +157,8 @@ export default function LoginModal({ onClose }: Props) {
         setError('Contraseña incorrecta. Si te registraste con Google, usa "Continuar con Google".');
       } else if (err.code === 'auth/weak-password') {
         setError('La contraseña debe tener al menos 6 caracteres.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Error de conexión. Verifica tu internet.');
       } else {
         setError('Ocurrió un error inesperado.');
       }

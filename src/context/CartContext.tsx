@@ -6,11 +6,11 @@ import { Producto } from '@/interfaces/Product';
 
 // Definimos cómo se verá un item DENTRO del carrito
 export interface CartItem {
-  id: string; // ID único para este item en el carrito (ej: product.id + hash de opciones)
+  id: string;
   product: Producto;
   quantity: number;
-  selectedOptions: any; // Aquí guardamos las opciones elegidas
-  totalPrice: number; // Precio final para esta línea (precio base + opciones * cantidad)
+  selectedOptions: any;
+  totalPrice: number;
 }
 
 interface CartContextType {
@@ -45,26 +45,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, [cartItems]);
 
   const addToCart = (itemToAdd: Omit<CartItem, 'id'>) => {
-    // Creamos un ID único basado en el producto y sus opciones
     const newItemId = itemToAdd.product.id + JSON.stringify(itemToAdd.selectedOptions);
     
     setCartItems(prevItems => {
-      // 1. Revisar si el item (con las mismas opciones) ya existe
       const existingItem = prevItems.find(item => item.id === newItemId);
       
       if (existingItem) {
-        // 2. Si existe, solo actualizamos la cantidad
         return prevItems.map(item =>
           item.id === newItemId
             ? { ...item, quantity: item.quantity + itemToAdd.quantity, totalPrice: item.totalPrice + itemToAdd.totalPrice }
             : item
         );
       } else {
-        // 3. Si no existe, lo añadimos como nuevo
         return [...prevItems, { ...itemToAdd, id: newItemId }];
       }
     });
-    openCart(); // Abrimos el carrito automáticamente
+    openCart();
   };
 
   const removeFromCart = (itemId: string) => {
@@ -78,7 +74,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
 
-  // Valores calculados
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
@@ -101,6 +96,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// 🔽 ESTA ES LA PARTE MÁS IMPORTANTE - EXPORT CORRECTO
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {
