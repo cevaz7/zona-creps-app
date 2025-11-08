@@ -16,11 +16,33 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com', // ← AGREGAR ESTO
+        hostname: 'res.cloudinary.com',
         port: '',
         pathname: '/**',
       },
     ],
+  },
+  
+  async headers() {
+    return [
+      {
+        source: '/api/service-worker',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript',
+          },
+          {
+            key: 'Service-Worker-Allowed',
+            value: '/',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache',
+          },
+        ],
+      },
+    ];
   },
 };
 

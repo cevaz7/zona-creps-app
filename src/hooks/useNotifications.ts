@@ -1,13 +1,22 @@
-// hooks/useNotifications.ts
+// hooks/useNotifications.ts - VERSIÓN SIMPLIFICADA
 import { useState, useEffect } from 'react';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { app } from '../../firebase/config';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { getAuth } from 'firebase/auth';
 
 export const useNotifications = () => {
   const [token, setToken] = useState<string>('');
+  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [isSupported, setIsSupported] = useState<boolean>(true);
+
+  // Verificar soporte básico
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
+      setIsSupported(false);
+    }
+  }, []);
 
   const saveTokenToFirestore = async (token: string) => {
     try {
@@ -15,7 +24,6 @@ export const useNotifications = () => {
       const user = auth.currentUser;
       
       if (user) {
-        // Guardar token asociado al usuario admin actual
         const tokenRef = doc(db, 'adminTokens', user.uid);
         await setDoc(tokenRef, {
           token: token,
@@ -24,53 +32,83 @@ export const useNotifications = () => {
           createdAt: new Date(),
           updatedAt: new Date()
         });
-        console.log('Token guardado en Firestore');
+        console.log('✅ Token guardado en Firestore');
       }
     } catch (error) {
-      console.error('Error guardando token:', error);
+      console.error('❌ Error guardando token:', error);
     }
   };
 
   useEffect(() => {
-    const requestPermission = async () => {
-      // Verificar si el navegador soporta Service Worker y Notifications
-      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
-        console.log('Este navegador no soporta notificaciones');
-        return;
-      }
+    if (!isSupported) return;
 
-      try {
-        const messaging = getMessaging(app);
-        
-        // Solicitar permiso
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          console.log('Permiso de notificación concedido');
-          
-          // Obtener token - REEMPLAZA 'TU_VAPID_KEY' con tu clave real
-          const currentToken = await getToken(messaging, {
-            vapidKey: 'BM92kyC8cQPFwOS0gdjOKABweGe7fsomMquV8W8g0GNnNhxZ75WhzmQ-SS2oAmNYfLncboH-1CCE3KCYING5Yws' // 👈 Reemplaza esto
-          });
-          
+    try {
+      const messaging = getMessaging(app);
+      
+      // Verificar permiso actual
+      setPermission(Notification.permission);
+
+      // Si ya tiene permiso, obtener token
+      if (Notification.permission === 'granted') {
+        getToken(messaging, {
+          vapidKey: 'BM92kyC8cQPFwOS0gdjOKABweGe7fsomMquV8W8g0GNnNhxZ75WhzmQ-SS2oAmNYfLncboH-1CCE3KCYING5Yws'
+        }).then((currentToken) => {
           if (currentToken) {
             setToken(currentToken);
-            console.log('Token FCM:', currentToken);
-            
-            // Guardar token en Firestore para este usuario admin
-            await saveTokenToFirestore(currentToken);
-          } else {
-            console.log('No se pudo obtener el token');
+            saveTokenToFirestore(currentToken);
           }
-        } else {
-          console.log('Permiso de notificación denegado');
-        }
-      } catch (error) {
-        console.error('Error al solicitar permisos:', error);
+        });
       }
-    };
 
-    requestPermission();
-  }, []);
+      // Escuchar mensajes en primer plano
+      onMessage(messaging, (payload) => {
+        console.log('📦 Notificación recibida:', payload);
+        
+        if (payload.notification && Notification.permission === 'granted') {
+          const { title, body } = payload.notification;
+          new Notification(title || 'Nuevo pedido', {
+            body: body || 'Tienes un nuevo pedido',
+            icon: '/icon-192x192.png'
+          });
+        }
+      });
 
-  return { token };
+    } catch (error) {
+      console.error('❌ Error en notificaciones:', error);
+      setIsSupported(false);
+    }
+  }, [isSupported]);
+
+  const requestPermission = async (): Promise<boolean> => {
+    if (!isSupported) return false;
+
+    try {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      
+      if (result === 'granted') {
+        const messaging = getMessaging(app);
+        const currentToken = await getToken(messaging, {
+          vapidKey: 'BM92kyC8cQPFwOS0gdjOKABweGe7fsomMquV8W8g0GNnNhxZ75WhzmQ-SS2oAmNYfLncboH-1CCE3KCYING5Yws'
+        });
+        
+        if (currentToken) {
+          setToken(currentToken);
+          await saveTokenToFirestore(currentToken);
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Error solicitando permiso:', error);
+      return false;
+    }
+  };
+
+  return { 
+    token, 
+    permission, 
+    isSupported,
+    requestPermission 
+  };
 };
