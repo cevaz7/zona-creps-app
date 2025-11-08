@@ -1,92 +1,86 @@
-// components/NotificationPermission.tsx - VERSIÓN MEJORADA
+// components/NotificationPermission.tsx - VERSIÓN PARA ESTADO BLOQUEADO
 "use client";
 
-import { useNotifications } from '@/hooks/useNotifications';
+import { useState, useEffect } from 'react';
 
 export default function NotificationPermission() {
-  const { token, permission, isSupported, requestPermission } = useNotifications();
+  const [permission, setPermission] = useState('default');
 
-  // 🆕 MANEJAR EL CASO DE PERMISOS BLOQUEADOS
-  const handleUnblockInstructions = () => {
-    const isChrome = /Chrome/.test(navigator.userAgent);
-    const isFirefox = /Firefox/.test(navigator.userAgent);
-    const isEdge = /Edg/.test(navigator.userAgent);
+  useEffect(() => {
+    // Verificar el estado actual al cargar
+    setPermission(Notification.permission);
+  }, []);
+
+  const handleManualUnblock = () => {
+    const isLocalhost = window.location.hostname === 'localhost';
+    const site = isLocalhost ? 'localhost:3000' : window.location.hostname;
     
-    let instructions = '';
+    const instructions = `
+🔧 CÓMO DESBLOQUEAR NOTIFICACIONES PARA ${site.toUpperCase()}
+
+1. HAZ CLIC en el CANDADO 🔒 en la barra de direcciones
+   (está justo a la izquierda de: ${window.location.href})
+
+2. Busca "Notificaciones" en la lista de permisos
+
+3. Cambia de "BLOQUEAR" a "PERMITIR"
+
+4. RECARGA la página (F5)
+
+📍 Si no ves el candado, ve a:
+   Configuración del Navegador > Privacidad > Configuración de sitios web > Notificaciones
+   Y busca "${site}" en la lista
+    `;
     
-    if (isChrome || isEdge) {
-      instructions = `
-1. Haz clic en el candado 🔒 en la barra de direcciones
-2. En "Notificaciones", cambia a "Permitir"
-3. Recarga la página
-      `;
-    } else if (isFirefox) {
-      instructions = `
-1. Haz clic en el ícono ⓘ en la barra de direcciones
-2. En "Permisos", cambia "Notificaciones" a "Permitir"
-3. Recarga la página
-      `;
-    } else {
-      instructions = `
-1. Ve a Configuración > Privacidad y seguridad > Configuración de sitios web > Notificaciones
-2. Encuentra este sitio y cambia a "Permitir"
-3. Recarga la página
-      `;
+    // Usar confirm para que el usuario tenga que hacer clic en OK
+    if (confirm(instructions)) {
+      // Recargar después de que el usuario confirme
+      window.location.reload();
     }
-    
-    alert(`Para activar notificaciones:\n\n${instructions}`);
   };
 
-  if (!isSupported) {
-    return null; // Ocultar si no es compatible
+  const handleTryAnyway = async () => {
+    console.log('Intentando solicitar permisos aunque esté bloqueado...');
+    try {
+      const result = await Notification.requestPermission();
+      console.log('Resultado del intento:', result);
+      setPermission(result);
+    } catch (error) {
+      console.log('Error al intentar:', error);
+    }
+  };
+
+  // Solo mostrar si está bloqueado
+  if (permission !== 'denied') {
+    return null;
   }
 
-  if (permission === 'granted' && token) {
-    return null; // Ocultar si ya está activado
-  }
-
-  if (permission === 'denied') {
-    return (
-      <div className="fixed top-20 right-4 z-50 max-w-sm">
-        <div className="bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded shadow-lg">
-          <div className="flex justify-between items-center">
-            <div>
-              <strong>🔔 Notificaciones Bloqueadas</strong>
-              <p className="text-sm">Debes desbloquearlas manualmente</p>
-            </div>
+  return (
+    <div className="fixed top-20 right-4 z-50 max-w-sm">
+      <div className="bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded shadow-lg">
+        <div>
+          <strong>🔔 Notificaciones Bloqueadas</strong>
+          <p className="text-sm mt-1 mb-3">
+            Has bloqueado las notificaciones para este sitio. Para recibir alertas de nuevos pedidos, necesitas desbloquearlas manualmente.
+          </p>
+          
+          <div className="flex flex-col gap-2">
             <button
-              onClick={handleUnblockInstructions}
-              className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 transition-colors text-sm"
+              onClick={handleManualUnblock}
+              className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition-colors text-sm"
             >
-              ¿Cómo?
+              📍 Desbloquear Manualmente
+            </button>
+            
+            <button
+              onClick={handleTryAnyway}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors text-sm"
+            >
+              Intentar de Todos Modos
             </button>
           </div>
         </div>
       </div>
-    );
-  }
-
-  // Solo mostrar el botón si el permiso es "default" (no decidido)
-  if (permission === 'default') {
-    return (
-      <div className="fixed top-20 right-4 z-50 max-w-sm">
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded shadow-lg">
-          <div className="flex justify-between items-center">
-            <div>
-              <strong>🔔 Notificaciones Push</strong>
-              <p className="text-sm">Recibe notificaciones de nuevos pedidos</p>
-            </div>
-            <button
-              onClick={requestPermission}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors text-sm"
-            >
-              Activar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 }
