@@ -1,4 +1,4 @@
-// hooks/useNotifications.ts - VERSIÓN SIMPLIFICADA
+// hooks/useNotifications.ts - VERSIÓN SEGURA
 import { useState, useEffect } from 'react';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { app } from '../../firebase/config';
@@ -11,12 +11,22 @@ export const useNotifications = () => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState<boolean>(true);
 
-  // Verificar soporte básico
+  // 🆕 VAPID KEY desde variables de entorno
+  const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
       setIsSupported(false);
+      return;
     }
-  }, []);
+
+    // 🆕 VERIFICAR QUE LA VAPID KEY EXISTA
+    if (!vapidKey) {
+      console.error('❌ VAPID Key no configurada en variables de entorno');
+      setIsSupported(false);
+      return;
+    }
+  }, [vapidKey]);
 
   const saveTokenToFirestore = async (token: string) => {
     try {
@@ -40,35 +50,42 @@ export const useNotifications = () => {
   };
 
   useEffect(() => {
-    if (!isSupported) return;
+    if (!isSupported || !vapidKey) return;
 
     try {
       const messaging = getMessaging(app);
       
-      // Verificar permiso actual
+      console.log('🔧 Inicializando Firebase Messaging...');
       setPermission(Notification.permission);
+      console.log('📋 Permiso actual:', Notification.permission);
 
-      // Si ya tiene permiso, obtener token
       if (Notification.permission === 'granted') {
-        getToken(messaging, {
-          vapidKey: 'BM92kyC8cQPFwOS0gdjOKABweGe7fsomMquV8W8g0GNnNhxZ75WhzmQ-SS2oAmNYfLncboH-1CCE3KCYING5Yws'
-        }).then((currentToken) => {
-          if (currentToken) {
-            setToken(currentToken);
-            saveTokenToFirestore(currentToken);
-          }
-        });
+        console.log('🎯 Obteniendo token FCM...');
+        getToken(messaging, { vapidKey })
+          .then((currentToken) => {
+            if (currentToken) {
+              console.log('✅ Token FCM obtenido:', currentToken);
+              setToken(currentToken);
+              saveTokenToFirestore(currentToken);
+            } else {
+              console.log('❌ No se pudo obtener token FCM');
+            }
+          })
+          .catch((error) => {
+            console.error('❌ Error obteniendo token:', error);
+          });
       }
 
       // Escuchar mensajes en primer plano
       onMessage(messaging, (payload) => {
-        console.log('📦 Notificación recibida:', payload);
+        console.log('📨 Mensaje en primer plano recibido:', payload);
         
         if (payload.notification && Notification.permission === 'granted') {
+          console.log('📱 Mostrando notificación...');
           const { title, body } = payload.notification;
           new Notification(title || 'Nuevo pedido', {
             body: body || 'Tienes un nuevo pedido',
-            icon: '/icon-192x192.png'
+            icon: '/badge/badge-72x72.svg'
           });
         }
       });
@@ -77,10 +94,10 @@ export const useNotifications = () => {
       console.error('❌ Error en notificaciones:', error);
       setIsSupported(false);
     }
-  }, [isSupported]);
+  }, [isSupported, vapidKey]);
 
   const requestPermission = async (): Promise<boolean> => {
-    if (!isSupported) return false;
+    if (!isSupported || !vapidKey) return false;
 
     try {
       const result = await Notification.requestPermission();
@@ -88,9 +105,7 @@ export const useNotifications = () => {
       
       if (result === 'granted') {
         const messaging = getMessaging(app);
-        const currentToken = await getToken(messaging, {
-          vapidKey: 'BM92kyC8cQPFwOS0gdjOKABweGe7fsomMquV8W8g0GNnNhxZ75WhzmQ-SS2oAmNYfLncboH-1CCE3KCYING5Yws'
-        });
+        const currentToken = await getToken(messaging, { vapidKey });
         
         if (currentToken) {
           setToken(currentToken);
