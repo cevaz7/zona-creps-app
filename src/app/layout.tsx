@@ -30,8 +30,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${montserrat.variable} ${playfairDisplay.variable} font-body bg-brand-cream`}>
         <AuthProvider>
           <CartProvider>
-            {/* 🆕 AGREGAR EL COMPONENTE DE PERMISOS */}
-            <NotificationPermission />
+            <footer>
+              <NotificationPermission />
+            </footer>
             
             {children}
             <ServiceWorkerInitializer />
