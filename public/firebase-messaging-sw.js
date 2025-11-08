@@ -41,24 +41,37 @@ self.addEventListener('push', (event) => {
   let icon = '/badge/badge-72x72.svg';
   
   // Procesar datos del push
-  if (event.data) {
+   if (event.data) {
     try {
-      const payload = event.data.json();
-      console.log('Payload JSON:', payload);
+      // Primero intentar como texto
+      const textData = event.data.text();
+      console.log('Datos push como texto:', textData);
       
-      if (payload.notification) {
-        title = payload.notification.title || title;
-        body = payload.notification.body || body;
+      // Luego intentar parsear como JSON
+      try {
+        const payload = JSON.parse(textData);
+        console.log('Datos push como JSON:', payload);
+        
+        if (payload.notification) {
+          title = payload.notification.title || title;
+          body = payload.notification.body || body;
+        } else if (payload.title || payload.body) {
+          title = payload.title || title;
+          body = payload.body || body;
+        }
+      } catch (jsonError) {
+        // Si no es JSON, usar el texto como body
+        body = textData || body;
+        console.log('Usando datos como texto plano');
       }
     } catch (e) {
-      console.log('Datos push no son JSON, usando valores por defecto');
+      console.log('No se pudieron leer los datos push');
     }
   }
   
   const options = {
     body: body,
-    icon: icon,
-    badge: '/badge/badge-72x72.svg',
+    
     requireInteraction: true
   };
   
