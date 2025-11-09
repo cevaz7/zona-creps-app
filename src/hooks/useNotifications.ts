@@ -141,6 +141,12 @@ export const useNotifications = () => {
       // 🆕 ESPERAR MÍNIMO TIEMPO NECESARIO
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      if (browserInfo?.userAgent?.includes('Brave')) {
+        console.warn('⚠️ Brave bloquea FCM por defecto. Debes permitir los servicios de Google FCM en la configuración del navegador.');
+        alert('⚠️ Brave bloquea las notificaciones push. Actívalas manualmente en Configuración → Escudos → Permitir servicios de Google FCM.');
+        return;
+      }
+
       // 🆕 OBTENER TOKEN SIN CONFIGURACIONES EXTRA
       const currentToken = await getToken(messaging, { 
         vapidKey,
@@ -187,33 +193,51 @@ export const useNotifications = () => {
     }
   }, [isSupported, vapidKey, serviceWorkerRegistration, permission, initialized]);
 
-  // 🆕 DETECTOR DE CAMBIOS DE PERMISOS
-  useEffect(() => {
-    if (!isSupported) return;
+// 🆕 DETECTOR DE CAMBIOS DE PERMISOS (versión mejorada para Edge y Brave)
+useEffect(() => {
+  if (!isSupported) return;
 
     const checkPermissionChange = () => {
       const currentPermission = getSafeNotificationPermission();
-      
+
       if (lastPermissionRef.current !== currentPermission) {
-        console.log('🔍 Cambio de permisos:', {
+        console.log('🔍 Cambio de permisos detectado:', {
           anterior: lastPermissionRef.current,
           actual: currentPermission
         });
 
+        // 🟢 Caso: usuario restauró permisos
         if (lastPermissionRef.current === 'denied' && currentPermission === 'granted') {
-          console.log('🎉 Permisos restaurados!');
+          console.log('🎉 Permisos restaurados — reiniciando Service Worker y token...');
           setPermission('granted');
           setToken('');
           localStorage.removeItem('fcm_token_debug');
-          
-          setTimeout(() => {
-            if (serviceWorkerRegistration) {
-              initializeMessaging();
+
+          // 🔄 Re-registrar el Service Worker completamente
+          const reRegisterSW = async () => {
+            try {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (const reg of registrations) await reg.unregister();
+              await new Promise(r => setTimeout(r, 1000));
+
+              const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', FIREBASE_SW_CONFIG);
+              console.log('✅ Service Worker reinstalado después de cambio de permisos');
+
+              setServiceWorkerRegistration(registration);
+              setTimeout(() => {
+                console.log('🎯 Reintentando obtener token...');
+                initializeMessaging();
+              }, 1500);
+            } catch (err) {
+              console.error('❌ Error al reinstalar SW:', err);
             }
-          }, 1000);
+          };
+
+          reRegisterSW();
         }
+        // 🔴 Caso: usuario revocó permisos
         else if (lastPermissionRef.current === 'granted' && currentPermission !== 'granted') {
-          console.log('🚫 Permisos revocados');
+          console.log('🚫 Permisos revocados, eliminando token...');
           setPermission(currentPermission);
           setToken('');
           localStorage.removeItem('fcm_token_debug');
@@ -223,6 +247,7 @@ export const useNotifications = () => {
       }
     };
 
+    // 👂 Monitorear cambios
     if ('permissions' in navigator) {
       navigator.permissions.query({ name: 'notifications' })
         .then((notificationPerm) => {
@@ -232,6 +257,7 @@ export const useNotifications = () => {
         .catch(() => {});
     }
 
+    // Verificar periódicamente por seguridad
     const interval = setInterval(checkPermissionChange, 5000);
     return () => clearInterval(interval);
   }, [isSupported, serviceWorkerRegistration]);
