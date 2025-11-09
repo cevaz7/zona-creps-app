@@ -269,6 +269,45 @@ useEffect(() => {
     return () => clearInterval(interval);
   }, [isSupported, serviceWorkerRegistration]);
 
+   // 🔄 DETECTOR SIMPLE DE PERMISO → genera token al instante cuando cambia a "granted"
+    useEffect(() => {
+      if (!isSupported) return;
+
+      const handlePermissionChange = () => {
+        if (Notification.permission === "granted" && !token) {
+          console.log("🔔 Permiso otorgado, intentando generar token nuevamente...");
+          const messaging = getMessaging(app);
+          getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY })
+            .then((newToken) => {
+              if (newToken) {
+                console.log("✅ Nuevo token generado tras permitir:", newToken);
+                setToken(newToken);
+                saveTokenToFirestore(newToken);
+              } else {
+                console.warn("⚠️ No se pudo generar el token tras permitir notificaciones.");
+              }
+            })
+            .catch((err) => console.error("❌ Error al regenerar token:", err));
+        }
+      };
+
+      if ("permissions" in navigator && (navigator as any).permissions) {
+        (navigator as any).permissions
+          .query({ name: "notifications" })
+          .then((permissionStatus: any) => {
+            permissionStatus.onchange = handlePermissionChange;
+          });
+      } else {
+        const interval = setInterval(() => {
+          if (Notification.permission === "granted" && !token) {
+            handlePermissionChange();
+            clearInterval(interval);
+          }
+        }, 1000);
+        return () => clearInterval(interval);
+      }
+    }, [token, isSupported]);
+
   const requestPermission = async () => {
     try {
       console.log('🔔 Solicitando permiso de notificaciones...');
