@@ -123,10 +123,9 @@ export const useNotifications = () => {
     registerServiceWorker();
   }, [isSupported, initialized]);
 
-  // 🆕 FUNCIÓN PARA OBTENER TOKEN SIN MANEJO DE ERRORES COMPLEJO
   const initializeMessaging = async () => {
     if (!isSupported || !vapidKey || !serviceWorkerRegistration || !initialized) return;
-    
+
     const currentPermission = getSafeNotificationPermission();
     if (currentPermission !== 'granted') {
       setPermission(currentPermission);
@@ -135,22 +134,29 @@ export const useNotifications = () => {
 
     try {
       const messaging = getMessaging(app);
-      
-      console.log('🎯 Obteniendo token FCM...');
 
-      // 🆕 ESPERAR MÍNIMO TIEMPO NECESARIO
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('🎯 Intentando obtener token FCM...');
 
-      if (browserInfo?.userAgent?.includes('Brave')) {
-        console.warn('⚠️ Brave bloquea FCM por defecto. Debes permitir los servicios de Google FCM en la configuración del navegador.');
-        alert('⚠️ Brave bloquea las notificaciones push. Actívalas manualmente en Configuración → Escudos → Permitir servicios de Google FCM.');
+      // 🧩 Detectar Brave y salir sin romper flujo
+      const ua = navigator.userAgent.toLowerCase();
+      const isBrave =
+      ua.includes('brave') ||
+      (typeof (navigator as any).brave !== 'undefined' &&
+        (navigator as any).brave &&
+        typeof (navigator as any).brave.isBrave === 'function');
+
+      if (isBrave) {
+        console.warn('⚠️ Brave bloquea FCM por defecto.');
+        alert('⚠️ Brave bloquea las notificaciones push. Para activarlas, ve a Configuración → Escudos → Permitir servicios de Google FCM.');
         return;
       }
 
-      // 🆕 OBTENER TOKEN SIN CONFIGURACIONES EXTRA
-      const currentToken = await getToken(messaging, { 
+      // 🕐 Esperar un pequeño tiempo (soluciona el bug de Edge)
+      await new Promise(r => setTimeout(r, 500));
+
+      const currentToken = await getToken(messaging, {
         vapidKey,
-        serviceWorkerRegistration
+        serviceWorkerRegistration,
       });
 
       if (currentToken) {
@@ -159,31 +165,32 @@ export const useNotifications = () => {
         localStorage.setItem('fcm_token_debug', currentToken);
         await saveTokenToFirestore(currentToken);
       } else {
-        console.log('❌ No se pudo obtener token FCM');
+        console.warn('⚠️ No se pudo obtener token. Puede ser un bloqueo del navegador.');
       }
 
-      // Mensajes en primer plano
+      // 📩 Escuchar mensajes en primer plano
       onMessage(messaging, (payload) => {
-        console.log('📨 Mensaje en primer plano:', payload);
-        
+        console.log('📨 Mensaje recibido:', payload);
+
         if (payload.notification && getSafeNotificationPermission() === 'granted') {
           const { title, body } = payload.notification;
           new Notification(title || 'Nuevo pedido', {
             body: body || 'Tienes un nuevo pedido',
             icon: '/icons/icon-192x192.png',
-            badge: '/icons/badge-72x72.png'
+            badge: '/icons/badge-72x72.png',
           });
         }
       });
 
     } catch (error) {
-      // 🆕 MANEJO DE ERROR SUPER SIMPLIFICADO
-      console.log('⚠️ Error obteniendo token:', error instanceof Error ? error.message : 'Error desconocido');
-      
-      // 🆕 NO HACER NADA - el error es probablemente temporal
-      // El usuario puede intentar nuevamente solicitando permisos
+      console.error('❌ Error obteniendo token FCM:', error);
+      // Evita romper en Brave o Edge
+      if (error instanceof Error && error.message.includes('messaging')) {
+        alert('⚠️ No se pudo inicializar las notificaciones. Verifica los permisos del navegador.');
+      }
     }
   };
+
 
   // INICIALIZAR MESSAGING CUANDO TODO ESTÉ LISTO
   useEffect(() => {
@@ -262,49 +269,54 @@ useEffect(() => {
     return () => clearInterval(interval);
   }, [isSupported, serviceWorkerRegistration]);
 
-  // 🆕 FUNCIÓN PARA SOLICITAR PERMISOS SIMPLIFICADA
-  const requestPermission = async (): Promise<boolean> => {
-    if (!isSupported || !vapidKey) {
-      console.log('🚫 Notificaciones no disponibles');
-      return false;
-    }
-
+  const requestPermission = async () => {
     try {
-      console.log('🔔 Solicitando permiso...');
-      
-      const currentPermission = getSafeNotificationPermission();
-      
-      if (currentPermission === 'granted') {
-        console.log('✅ Permisos ya concedidos');
-        setPermission('granted');
-        
-        if (!token && serviceWorkerRegistration) {
-          console.log('🔄 Generando token...');
-          await initializeMessaging();
-        }
-        return true;
+      console.log('🔔 Solicitando permiso de notificaciones...');
+
+      // 🧩 Detectar Brave
+      const ua = navigator.userAgent.toLowerCase();
+      const isBrave =
+      ua.includes('brave') ||
+      (typeof (navigator as any).brave !== 'undefined' &&
+        (navigator as any).brave &&
+        typeof (navigator as any).brave.isBrave === 'function');
+
+      if (isBrave) {
+        alert('⚠️ Brave bloquea las notificaciones push. Ve a Configuración → Escudos → Permitir servicios de Google FCM para activarlas.');
+        return;
       }
-      
-      const result = await Notification.requestPermission();
-      console.log('📋 Resultado:', result);
-      setPermission(result);
-      lastPermissionRef.current = result;
-      
-      if (result === 'granted') {
-        console.log('🎉 Permisos concedidos!');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        if (serviceWorkerRegistration) {
-          await initializeMessaging();
-        }
-        return true;
+
+      // 🧩 Detectar Edge (para evitar que se quede “cargando”)
+      const isEdge = ua.includes('edg/');
+
+      let permissionResult: NotificationPermission;
+
+      // Edge y Chrome modernos
+      if (Notification.requestPermission.length === 0) {
+        // Algunos navegadores (Edge, Chrome nuevos) devuelven una Promise
+        permissionResult = await Notification.requestPermission();
+      } else {
+        // Compatibilidad con Safari / Firefox
+        permissionResult = await new Promise((resolve) =>
+          Notification.requestPermission(resolve)
+        );
       }
-      
-      return false;
-      
+
+      console.log('🔔 Resultado del permiso:', permissionResult);
+      setPermission(permissionResult);
+
+      if (permissionResult === 'granted') {
+        // ⚡️ Espera breve para permitir que se registre el permiso antes de continuar
+        await new Promise((r) => setTimeout(r, isEdge ? 600 : 300));
+        await initializeMessaging();
+      } else if (permissionResult === 'denied') {
+        alert('🚫 Has denegado las notificaciones. Puedes habilitarlas desde la configuración del navegador.');
+      } else {
+        console.warn('ℹ️ Permiso de notificaciones no otorgado.');
+      }
     } catch (error) {
-      console.log('⚠️ Error solicitando permiso:', error);
-      return false;
+      console.error('❌ Error solicitando permiso:', error);
+      alert('⚠️ Ocurrió un error al solicitar permisos. Intenta nuevamente o revisa la configuración del navegador.');
     }
   };
 
