@@ -6,6 +6,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import ServiceWorkerInitializer from "@/components/ServiceWorkerInitializer";
 import NotificationPermission from "@/components/NotificationPermission"; // 🆕 IMPORTAR
+import NotificationInitializer from "@/components/NotificationInitializer"; // 🆕 IMPORTAR
 
 const montserrat = Montserrat({ 
   subsets: ["latin"], 
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CartProvider>
             <footer>
               <NotificationPermission />
+              <NotificationInitializer/>
             </footer>
             
             {children}
