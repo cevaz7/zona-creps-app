@@ -1,18 +1,19 @@
-// utils/sendNotification.ts
+// utils/sendNotification.ts - VERSIÓN QUE SÍ LLAMA A FCM
 import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { sendFCMPushDirect } from './sendFCMPush'; // ← Asegúrate que este import sea correcto
 
 export const sendNewOrderNotification = async (orderData: any) => {
   try {
-    console.log('🔄 Procesando pedido...', orderData);
+    console.log('🔄 Creando pedido y notificaciones...');
 
-    // 1. Primero guardar el PEDIDO en Firestore
+    // 1. Guardar el pedido en Firestore
     const orderRef = doc(collection(db, 'orders'));
     const orderId = orderRef.id;
     
     const completeOrderData = {
       ...orderData,
-      id: orderId, // Agregar el ID generado
+      id: orderId,
       status: 'pending',
       createdAt: serverTimestamp(),
     };
@@ -20,10 +21,9 @@ export const sendNewOrderNotification = async (orderData: any) => {
     await setDoc(orderRef, completeOrderData);
     console.log('✅ Pedido guardado en Firestore:', orderId);
 
-    // 2. Luego crear la NOTIFICACIÓN
+    // 2. Crear notificación en Firestore (para el panel admin)
     const notificationRef = doc(collection(db, 'notifications'));
     
-    // Mejorar el mensaje de la notificación
     const itemNames = orderData.items?.map((item: any) => 
       `${item.quantity}x ${item.name}`
     ).join(', ') || 'productos';
@@ -40,11 +40,18 @@ export const sendNewOrderNotification = async (orderData: any) => {
       sentTo: 'admin'
     });
 
-    console.log('✅ Notificación de nuevo pedido enviada');
-    return true; // Importante: retornar éxito
+    console.log('✅ Notificación en Firestore creada');
+
+    // 3. 🔥🔥🔥 LLAMAR REALMENTE A LA FUNCIÓN FCM
+    console.log('🚀 Llamando a sendFCMPushDirect...');
+    await sendFCMPushDirect(orderData, orderId);
+    console.log('✅ sendFCMPushDirect completado');
+    
+    console.log('✅ Flujo completado - Notificaciones enviadas a administradores');
+    return true;
     
   } catch (error) {
-    console.error('❌ Error enviando notificación:', error);
-    return false; // Retornar fallo
+    console.error('❌ Error en el flujo de notificaciones:', error);
+    return false;
   }
 };
