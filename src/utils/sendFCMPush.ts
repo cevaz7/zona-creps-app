@@ -1,118 +1,87 @@
-// utils/sendFCMPush.ts - VERSIÓN MEJORADA
 import { getDocs, collection } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { sendEmailNotification } from './sendEmailNotification'; // 🔥 NUEVA IMPORTACIÓN
+
+const broadcastChannel = typeof window !== 'undefined' 
+  ? new BroadcastChannel('admin_notifications')
+  : null;
 
 export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
   try {
-    console.log('📤 Enviando FCM push directo...');
+    console.log('📦 Procesando notificación para pedido:', orderId.substring(0, 8));
 
-    // 1. Obtener tokens de administradores
+    // 1. Obtener tokens de admins
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const adminUserIds = new Set();
+
+    usersSnapshot.forEach((doc) => {
+      const userData = doc.data();
+      if (userData.role === 'admin') {
+        adminUserIds.add(doc.id);
+      }
+    });
+
     const tokensSnapshot = await getDocs(collection(db, 'adminTokens'));
     const adminTokens: string[] = [];
-    
+
     tokensSnapshot.forEach((doc) => {
       const tokenData = doc.data();
-      if (tokenData.token) {
+      if (tokenData.token && tokenData.userId && adminUserIds.has(tokenData.userId)) {
         adminTokens.push(tokenData.token);
       }
     });
 
-    console.log(`📋 Tokens encontrados: ${adminTokens.length}`);
-
-    if (adminTokens.length === 0) {
-      console.log('ℹ️ No hay administradores registrados');
-      return;
-    }
+    console.log(`👑 ${adminTokens.length} admin(s) conectados`);
 
     // 2. Preparar notificación
     const itemNames = orderData.items?.map((item: any) => 
       `${item.quantity}x ${item.name}`
     ).join(', ') || 'productos';
 
-    // 3. Enviar a cada token
-    for (const token of adminTokens) {
-      await sendToFCM(token, {
-        title: '¡Nuevo Pedido! 🎉',
-        body: `Pedido #${orderId.substring(0, 8)} - ${itemNames} - $${orderData.total?.toFixed(2)}`,
+    const notificationData = {
+      title: '¡Nuevo Pedido! 🎉',
+      body: `Pedido #${orderId.substring(0, 8)} - ${itemNames} - Total: $${orderData.total?.toFixed(2) || '0.00'}`,
+      orderId: orderId,
+      total: orderData.total || 0,
+      itemsCount: orderData.items?.length || 0,
+      timestamp: new Date().toISOString()
+    };
+
+    // 3. Enviar notificación en tiempo real
+    if (adminTokens.length > 0 && broadcastChannel) {
+      broadcastChannel.postMessage({
+        type: 'NEW_ORDER',
+        data: notificationData
       });
+      console.log('✅ Notificación enviada a panel admin');
     }
 
-    console.log('✅ Notificaciones FCM enviadas');
+    // 🔥 NUEVO: ENVIAR NOTIFICACIÓN POR EMAIL
+    console.log('📧 Enviando notificación por email...');
+    await sendEmailNotification(orderData, orderId);
 
   } catch (error) {
-    console.error('❌ Error enviando FCM:', error);
+    console.error('❌ Error en notificación:', error);
   }
 };
 
-// Función mejorada para enviar notificaciones
-const sendToFCM = async (token: string, notification: any) => {
-  try {
-    // EN DESARROLLO: Mostrar notificación local
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[DEV] FCM a: ${token.substring(0, 20)}...`, notification);
-      
-      await showBrowserNotification(notification);
-      return;
-    }
+// Función para pruebas
+export const testAdminNotification = () => {
+  const testData = {
+    title: '¡TEST Notificación! 🧪',
+    body: 'Esta es una notificación de prueba',
+    orderId: 'test-' + Date.now(),
+    total: 99.99,
+    itemsCount: 3,
+    timestamp: new Date().toISOString()
+  };
 
-    console.log(`[PROD] Simulando FCM a: ${token.substring(0, 20)}...`);
-    
-  } catch (error) {
-    console.error('Error en sendToFCM:', error);
-  }
-};
-
-// Función separada para mostrar notificación del navegador
-const showBrowserNotification = async (notification: any) => {
-  try {
-    // Verificar si el navegador soporta notificaciones
-    if (!('Notification' in window)) {
-      console.log('❌ Este navegador no soporta notificaciones');
-      return;
-    }
-
-    console.log('🔔 Estado de permisos:', Notification.permission);
-
-    // Si no tiene permiso, solicitarlo
-    if (Notification.permission === 'default') {
-      console.log('🔔 Solicitando permisos...');
-      const permission = await Notification.requestPermission();
-      console.log('🔔 Resultado de permisos:', permission);
-    }
-
-    // Si tiene permiso concedido, mostrar notificación
-    if (Notification.permission === 'granted') {
-      console.log('🔔 Mostrando notificación del navegador...');
-      
-      const notif = new Notification(notification.title, {
-        body: notification.body,
-        icon: '/icon-192x192.svg', // Usar SVG que creamos
-        badge: '/badge-72x72.svg',
-        tag: 'new-order', // Agrupar notificaciones similares
-        requireInteraction: true, // Permanecer hasta interacción
-      });
-
-      // Manejar clic en la notificación
-      notif.onclick = () => {
-        console.log('🔔 Notificación clickeada - abriendo admin');
-        window.focus();
-        // Redirigir al admin si no está allí
-        if (window.location.pathname !== '/admin') {
-          window.open('/admin', '_blank');
-        }
-      };
-
-      notif.onclose = () => {
-        console.log('🔔 Notificación cerrada');
-      };
-
-      console.log('✅ Notificación del navegador mostrada');
-      
-    } else {
-      console.log('❌ Permisos de notificación no concedidos:', Notification.permission);
-    }
-
-  } catch (error) {
-    console.error('❌ Error mostrando notificación:', error);
+  if (typeof window !== 'undefined') {
+    const broadcastChannel = new BroadcastChannel('admin_notifications');
+    broadcastChannel.postMessage({
+      type: 'NEW_ORDER',
+      data: testData
+    });
+    console.log('🧪 Notificación de prueba enviada');
   }
 };

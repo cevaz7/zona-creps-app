@@ -2,7 +2,7 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
-import { sendNewOrderNotification } from "@/utils/sendNotification";
+import { sendFCMPushDirect } from "@/utils/sendFCMPush";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -43,11 +43,13 @@ export default function CartPanel() {
       };
 
       console.log('🔴 OrderData preparado:', orderData);
-      console.log('🔴 Llamando a sendNewOrderNotification...');
+      console.log('🔴 Llamando a sendFCMPushDirect...');
 
       // Enviar pedido y notificación
-      const success = await sendNewOrderNotification(orderData);
-      console.log('🔴 Resultado de sendNewOrderNotification:', success);
+      const orderId = 'order-' + Date.now();
+      await sendFCMPushDirect(orderData, orderId);
+      console.log('🔴 sendFCMPushDirect completado');
+      const success = true;
       
       if (success) {
         console.log('🟢 ÉXITO - Limpiando carrito...');

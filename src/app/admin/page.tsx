@@ -11,6 +11,8 @@ import Header from "../../components/Header";
 import NotificationsPanel from '@/components/NotificationsPanel'; 
 import { useState } from 'react'; 
 import NotificationPermission from '@/components/NotificationPermission';
+import AdminNotificationToast from '@/components/AdminNotificationToast';
+
 
 // 🔽 ACTUALIZAR AdminDashboard para incluir navegación
 function AdminDashboard() {
@@ -19,6 +21,7 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen bg-brand-cream">
       <Header />
+      <AdminNotificationToast />
       
       <div className="pt-24">
 
