@@ -106,7 +106,7 @@ export async function POST(request: Request) {
 
                 <div style="text-align: center; margin: 30px 0;">
                     <p style="margin-bottom: 15px; color: #666;">Accede al panel de administración para gestionar este pedido:</p>
-                    <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/admin" class="button">
+                    <a href="${process.env.NEXTAUTH_URL || 'https://zona-creps-app.vercel.app/'}/admin" class="button">
                     📊 Acceder al Panel Admin
                     </a>
                 </div>
