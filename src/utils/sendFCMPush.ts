@@ -1,10 +1,41 @@
-import { getDocs, collection } from 'firebase/firestore';
+import { getDocs, collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { sendEmailNotification } from './sendEmailNotification'; // 🔥 NUEVA IMPORTACIÓN
+import { sendEmailNotification } from './sendEmailNotification';
 
 const broadcastChannel = typeof window !== 'undefined' 
   ? new BroadcastChannel('admin_notifications')
   : null;
+
+// 🔥 FUNCIÓN PARA GUARDAR NOTIFICACIÓN EN FIRESTORE
+const saveNotificationToFirestore = async (notificationData: any) => {
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      ...notificationData,
+      type: 'NEW_ORDER',
+      read: false,
+      sentTo: 'admin',
+      createdAt: new Date()
+    });
+    console.log('📝 Notificación guardada en Firestore');
+  } catch (error) {
+    console.error('❌ Error guardando notificación:', error);
+  }
+};
+
+// 🔥 FUNCIÓN PARA GUARDAR ORDEN EN FIRESTORE
+const saveOrderToFirestore = async (orderData: any, orderId: string) => {
+  try {
+    await addDoc(collection(db, 'orders'), {
+      ...orderData,
+      orderId: orderId,
+      createdAt: new Date(),
+      status: 'pending'
+    });
+    console.log('📝 Orden guardada en Firestore');
+  } catch (error) {
+    console.error('❌ Error guardando orden:', error);
+  }
+};
 
 export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
   try {
@@ -40,14 +71,18 @@ export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
 
     const notificationData = {
       title: '¡Nuevo Pedido! 🎉',
-      body: `Pedido #${orderId.substring(0, 8)} - ${itemNames} - Total: $${orderData.total?.toFixed(2) || '0.00'}`,
+      body: `Pedido #${orderId.slice(-8)} - ${itemNames} - Total: $${orderData.total?.toFixed(2) || '0.00'}`,
       orderId: orderId,
       total: orderData.total || 0,
       itemsCount: orderData.items?.length || 0,
       timestamp: new Date().toISOString()
     };
 
-    // 3. Enviar notificación en tiempo real
+    // 3. 🔥 GUARDAR EN FIRESTORE
+    await saveNotificationToFirestore(notificationData);
+    await saveOrderToFirestore(orderData, orderId);
+
+    // 4. Enviar notificación en tiempo real
     if (adminTokens.length > 0 && broadcastChannel) {
       broadcastChannel.postMessage({
         type: 'NEW_ORDER',
@@ -56,7 +91,7 @@ export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
       console.log('✅ Notificación enviada a panel admin');
     }
 
-    // 🔥 NUEVO: ENVIAR NOTIFICACIÓN POR EMAIL
+    // 5. Enviar notificación por email
     console.log('📧 Enviando notificación por email...');
     await sendEmailNotification(orderData, orderId);
 
@@ -65,7 +100,7 @@ export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
   }
 };
 
-// Función para pruebas
+// Función para pruebas (sin cambios)
 export const testAdminNotification = () => {
   const testData = {
     title: '¡TEST Notificación! 🧪',

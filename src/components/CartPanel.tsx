@@ -6,69 +6,59 @@ import { sendFCMPushDirect } from "@/utils/sendFCMPush";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { getAuth } from 'firebase/auth';
 
 export default function CartPanel() {
   const { isCartOpen, closeCart, cartItems, removeFromCart, cartTotal, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleFinalizeOrder = async () => {
-    console.log('🔴 handleFinalizeOrder INICIADO');
+const handleFinalizeOrder = async () => {
+  try {
+    setIsProcessing(true);
     
-    try {
-      setIsProcessing(true);
-      console.log('🔴 isProcessing establecido a true');
-      
-      // Verificar que hay items en el carrito
-      if (cartItems.length === 0) {
-        console.log('❌ Carrito vacío, no se puede procesar');
-        alert('El carrito está vacío');
-        return;
-      }
-
-      console.log('🔴 CartItems:', cartItems);
-      
-      // Preparar datos del pedido
-      const orderData = {
-        items: cartItems.map(item => ({
-          name: item.product.nombre,
-          quantity: item.quantity,
-          price: item.product.precioBase,
-          totalPrice: item.totalPrice,
-          selectedOptions: item.selectedOptions,
-          productId: item.product.id
-        })),
-        total: cartTotal,
-        customerName: 'Cliente',
-        status: 'pending'
-      };
-
-      console.log('🔴 OrderData preparado:', orderData);
-      console.log('🔴 Llamando a sendFCMPushDirect...');
-
-      // Enviar pedido y notificación
-      const orderId = 'order-' + Date.now();
-      await sendFCMPushDirect(orderData, orderId);
-      console.log('🔴 sendFCMPushDirect completado');
-      const success = true;
-      
-      if (success) {
-        console.log('🟢 ÉXITO - Limpiando carrito...');
-        clearCart();
-        closeCart();
-        alert('¡Pedido realizado con éxito! Te notificaremos cuando esté listo.');
-      } else {
-        console.log('❌ FALLO en sendNewOrderNotification');
-        alert('Error al procesar el pedido. Intenta nuevamente.');
-      }
-      
-    } catch (error) {
-      console.error('❌ ERROR en handleFinalizeOrder:', error);
-      alert('Error al procesar el pedido. Por favor, intenta nuevamente.');
-    } finally {
-      console.log('🔴 Finalizando - isProcessing a false');
-      setIsProcessing(false);
+    if (cartItems.length === 0) {
+      alert('El carrito está vacío');
+      return;
     }
-  };
+
+    // 🔥 OBTENER USUARIO DE FIREBASE AUTH
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const userName = user?.displayName || user?.email?.split('@')[0] || 'Cliente';
+    const userEmail = user?.email || '';
+
+    // Preparar datos del pedido
+    const orderData = {
+      items: cartItems.map(item => ({
+        name: item.product.nombre,
+        quantity: item.quantity,
+        price: item.product.precioBase,
+        totalPrice: item.totalPrice,
+        selectedOptions: item.selectedOptions,
+        productId: item.product.id
+      })),
+      total: cartTotal,
+      customerName: userName, // 🔥 NOMBRE REAL
+      customerEmail: userEmail, // 🔥 EMAIL REAL  
+      customerId: user?.uid || '', // 🔥 ID DEL USUARIO
+      status: 'pending'
+    };
+
+    // Enviar pedido y notificación
+    const orderId = 'order-' + Date.now();
+    await sendFCMPushDirect(orderData, orderId);
+
+    clearCart();
+    closeCart();
+    alert('¡Pedido realizado con éxito! Te notificaremos cuando esté listo.');
+    
+  } catch (error) {
+    console.error('Error al procesar el pedido:', error);
+    alert('Error al procesar el pedido. Por favor, intenta nuevamente.');
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   if (!isCartOpen) return null;
 
