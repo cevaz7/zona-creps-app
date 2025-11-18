@@ -1,4 +1,5 @@
 // utils/sendWhatsAppFree.ts
+import { openMultipleWhatsApp } from './whatsappOpener';
 
 interface WhatsAppConfig {
   adminPhone: string;
@@ -44,6 +45,11 @@ const formatPhoneForWhatsApp = (phone: string): string => {
   return cleanPhone;
 };
 
+// 🔥 DETECTAR SI ES MODO PRUEBA (mismo admin y cliente)
+const isTestMode = (adminPhone: string, customerPhone: string): boolean => {
+  return adminPhone === customerPhone;
+};
+
 export const sendWhatsAppFree = async (
   orderData: any, 
   orderId: string, 
@@ -71,8 +77,9 @@ export const sendWhatsAppFree = async (
     console.log('📞 Admin:', formattedAdminPhone);
     console.log('📞 Cliente:', formattedCustomerPhone);
 
-    // 🔥 DETECTAR SI ES MODO PRUEBA (mismo admin y cliente)
-    const isSamePerson = formattedAdminPhone === formattedCustomerPhone;
+    // 🔥 DETECTAR MODO PRUEBA
+    const testMode = isTestMode(formattedAdminPhone, formattedCustomerPhone);
+    console.log('🔧 Modo prueba:', testMode);
 
     // Preparar detalles de productos
     const itemDetails = orderData.items?.map((item: any) => 
@@ -174,55 +181,54 @@ ${deliveryMessage}
 ¡Gracias por tu compra! 🎉`;
     }
 
-    // 🔗 GENERAR ENLACES DE WHATSAPP
-    const adminWhatsAppUrl = `https://wa.me/${formattedAdminPhone}?text=${encodeURIComponent(adminMessage)}`;
-    const customerWhatsAppUrl = `https://wa.me/${formattedCustomerPhone}?text=${encodeURIComponent(customerMessage)}`;
+    // 🔥 USAR LA SOLUCIÓN UNIVERSAL CON WHATSAPPOPENER
+    console.log('📱 Usando WhatsAppOpener universal...');
 
-    console.log('📱 WhatsApp Admin:', adminWhatsAppUrl);
-    console.log('📱 WhatsApp Cliente:', customerWhatsAppUrl);
-    console.log('👤 Mismo admin y cliente?:', isSamePerson);
+    const chatsToOpen = [
+      { phone: formattedCustomerPhone, message: customerMessage },
+      { phone: formattedAdminPhone, message: adminMessage }
+    ];
 
-    // 📱 SOLUCIÓN ALTERNATIVA SIMPLE - DETECCIÓN DE DISPOSITIVO
-    console.log('📱 Abriendo WhatsApp...');
-
-    // Función para abrir WhatsApp de forma confiable
-    const openWhatsApp = (url: string) => {
-      // Método 1: Intentar con window.open
-      const newWindow = window.open(url, '_blank');
+    // 🔥 ESTRATEGIA DIFERENCIADA: MODO PRUEBA vs MODO REAL
+    if (testMode) {
+      console.log('🔧 MODO PRUEBA: Admin y cliente son la misma persona');
       
-      // Método 2: Si falla, usar enlace temporal
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        console.log('⚠️ window.open falló, usando método alternativo...');
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    };
+      // En modo prueba, abrir solo UNA ventana con mensaje combinado
+      const testMessage = `🔧 *MODO PRUEBA - ${businessName}*\n\n` +
+        `Estás probando el sistema como ADMIN y CLIENTE\n\n` +
+        `📦 Pedido: #${orderNumber}\n` +
+        `👤 Cliente: ${orderData.customerName}\n` +
+        `💰 Total: $${orderData.total?.toFixed(2)}\n` +
+        `💳 Método: ${orderData.paymentMethod}\n` +
+        `📍 Notas: ${orderData.notes || 'Prueba del sistema'}\n\n` +
+        `✅ En un pedido real:\n` +
+        `• Cliente recibiría: ${orderData.paymentMethod === 'Transferencia' ? 'datos bancarios' : 'solicitud de ubicación'}\n` +
+        `• Admin recibiría: notificación completa del pedido`;
 
-    // 🔥 ESTRATEGIA MEJORADA SEGÚN MODO
-    if (isSamePerson) {
-      // 🔧 MODO PRUEBA - Solo una ventana para admin
-      console.log('🔧 MODO PRUEBA: Abriendo solo WhatsApp para admin');
-      openWhatsApp(adminWhatsAppUrl);
+      const testChat = [{ phone: formattedAdminPhone, message: testMessage }];
+      return openMultipleWhatsApp(testChat);
+      
     } else {
-      // 🚀 MODO REAL - Ambas ventanas automáticamente
-      console.log('🚀 MODO REAL: Abriendo WhatsApp para cliente y admin');
+      console.log('🚀 MODO REAL: Cliente diferente al admin');
       
-      // Primero para el CLIENTE
-      openWhatsApp(customerWhatsAppUrl);
-      
-      // Luego para el ADMIN con delay
-      setTimeout(() => {
-        openWhatsApp(adminWhatsAppUrl);
-      }, 1500);
-    }
+      // 🚀 MODO REAL - Usar la solución universal
+      const success = openMultipleWhatsApp(chatsToOpen);
 
-    return true;
+      if (!success) {
+        console.error('❌ No se pudo abrir WhatsApp automáticamente');
+        
+        // 🔥 FALLBACK: Mostrar enlaces manuales
+        const fallbackMessage = `📱 Para completar tu pedido:\n\n` +
+          `1. CLIENTE: ${customerMessage.substring(0, 100)}...\n` +
+          `   Enlace: https://wa.me/${formattedCustomerPhone}?text=${encodeURIComponent(customerMessage)}\n\n` +
+          `2. ADMIN: ${adminMessage.substring(0, 100)}...\n` +
+          `   Enlace: https://wa.me/${formattedAdminPhone}?text=${encodeURIComponent(adminMessage)}`;
+        
+        alert(fallbackMessage);
+      }
+
+      return success;
+    }
 
   } catch (error) {
     console.error('❌ Error enviando WhatsApp:', error);
