@@ -61,30 +61,20 @@ const copyToClipboard = async (text: string): Promise<boolean> => {
   }
 };
 
-// 🔥 FUNCIÓN MEJORADA PARA ABRIR WHATSAPP
-const openWhatsApp = (url: string, target: string = '_blank'): boolean => {
+// 🔥 FUNCIÓN CORREGIDA PARA ABRIR WHATSAPP
+const openWhatsApp = (url: string): boolean => {
   try {
     console.log('📱 Intentando abrir WhatsApp...');
     
-    // Método 1: window.open normal
-    const newWindow = window.open(url, target);
-    
-    // Verificar si fue bloqueado
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      console.log('❌ WhatsApp bloqueado por popup blocker');
-      return false;
-    }
-    
-    // Verificar después de un tiempo si la ventana sigue abierta
-    setTimeout(() => {
-      try {
-        if (newWindow.closed) {
-          console.log('❌ Ventana cerrada inmediatamente');
-        }
-      } catch (e) {
-        console.log('❌ No se puede verificar estado de ventana');
-      }
-    }, 500);
+    // Método mejorado: crear enlace y hacer click
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
     console.log('✅ WhatsApp abierto exitosamente');
     return true;
@@ -95,166 +85,85 @@ const openWhatsApp = (url: string, target: string = '_blank'): boolean => {
   }
 };
 
-// 🔥 FUNCIÓN PRINCIPAL MEJORADA
-const openWhatsAppWithInstructions = async (customerUrl: string, adminUrl: string): Promise<boolean> => {
-  console.log('🎯 Iniciando proceso de WhatsApp...');
+// 🔥 FUNCIÓN PRINCIPAL COMPLETAMENTE CORREGIDA
+const openWhatsAppWithInstructions = async (adminUrl: string): Promise<boolean> => {
+  console.log('🎯 Iniciando proceso de WhatsApp para ADMIN...');
   
-  // 1. PRIMERO: Intentar abrir automáticamente para CLIENTE
-  console.log('📱 Abriendo WhatsApp para CLIENTE...');
-  let clientOpened = openWhatsApp(customerUrl);
+  // 1. PRIMERO: Intentar abrir automáticamente para ADMIN
+  console.log('👑 Abriendo WhatsApp para ADMIN...');
+  let adminOpened = openWhatsApp(adminUrl);
   
-  if (clientOpened) {
-    console.log('✅ WhatsApp cliente abierto automáticamente');
-    
-    // 2. LUEGO: Abrir para ADMIN con delay
-    setTimeout(() => {
-      console.log('👑 Abriendo WhatsApp para ADMIN...');
-      const adminOpened = openWhatsApp(adminUrl, '_blank');
-      
-      if (!adminOpened) {
-        console.log('❌ WhatsApp admin bloqueado');
-        // Mostrar instrucciones solo para admin
-        setTimeout(() => {
-          showAdminInstructions(adminUrl);
-        }, 1000);
-      }
-    }, 1500);
-    
+  if (adminOpened) {
+    console.log('✅ WhatsApp admin abierto automáticamente');
     return true;
   }
   
-  // 3. SI FALLA: Mostrar instrucciones completas
+  // 2. SI FALLA: Mostrar instrucciones
   console.log('❌ WhatsApp bloqueado, mostrando instrucciones...');
-  return await showCompleteInstructions(customerUrl, adminUrl);
+  return await showUnlockInstructions(adminUrl);
 };
 
-// 🔥 FUNCIÓN PARA MOSTRAR INSTRUCCIONES COMPLETAS
-const showCompleteInstructions = async (customerUrl: string, adminUrl: string): Promise<boolean> => {
+// 🔥 FUNCIÓN PARA MOSTRAR INSTRUCCIONES
+const showUnlockInstructions = async (adminUrl: string): Promise<boolean> => {
   const userChoice = confirm(
     `📱 **WHATSAAP BLOQUEADO**\n\n` +
-    `El navegador está bloqueando la apertura automática.\n\n` +
-    `¿Quieres ver INSTRUCCIONES para desbloquear o COPIAR los enlaces manualmente?\n\n` +
-    `• "Aceptar" = Ver INSTRUCCIONES de desbloqueo\n` +
-    `• "Cancelar" = COPIAR enlaces manualmente`
+    `No se pudo abrir WhatsApp para notificar al administrador.\n\n` +
+    `¿Quieres ver INSTRUCCIONES para desbloquear?`
   );
   
   if (userChoice) {
-    // 🔥 OPCIÓN 1: MOSTRAR INSTRUCCIONES DE DESBLOQUEO
-    return await showUnlockInstructions(customerUrl, adminUrl);
-  } else {
-    // 🔥 OPCIÓN 2: COPIAR ENLACES MANUALMENTE
-    return await copyLinksManually(customerUrl, adminUrl);
+    // 🔥 MOSTRAR INSTRUCCIONES DE DESBLOQUEO
+    const instructionsConfirmed = confirm(
+      `🔓 **INSTRUCCIONES PARA DESBLOQUEO**\n\n` +
+      `📱 **EN CELULAR:**\n` +
+      `1. Toca los 3 puntos ⋮ (menú)\n` +
+      `2. Ve a "Configuración del sitio"\n` +
+      `3. Activa "Ventanas emergentes"\n\n` +
+      `💻 **EN COMPUTADORA:**\n` +
+      `1. Haz clic en el 🔒 candado en la barra de URL\n` +
+      `2. Selecciona "Permitir ventanas emergentes"\n` +
+      `3. Recarga la página\n\n` +
+      `¿Quieres que reintentemos abrir WhatsApp?`
+    );
+    
+    if (instructionsConfirmed) {
+      console.log('🔄 Reintentando después de instrucciones...');
+      
+      // Reintentar después de instrucciones
+      const retryAdmin = openWhatsApp(adminUrl);
+      
+      if (retryAdmin) {
+        console.log('✅ Reintento exitoso');
+        return true;
+      } else {
+        console.log('❌ Reintento fallido');
+        return await copyAdminLink(adminUrl);
+      }
+    }
   }
+  
+  // 3. COPIAR ENLACE DEL ADMIN
+  return await copyAdminLink(adminUrl);
 };
 
-// 🔥 FUNCIÓN PARA MOSTRAR INSTRUCCIONES DE DESBLOQUEO
-const showUnlockInstructions = async (customerUrl: string, adminUrl: string): Promise<boolean> => {
-  const instructionsConfirmed = confirm(
-    `🔓 **INSTRUCCIONES PARA DESBLOQUEAR WHATSAPP**\n\n` +
-    `📱 **EN CELULAR:**\n` +
-    `1. Toca los 3 puntos ⋮ (menú)\n` +
-    `2. Ve a "Configuración del sitio" o "Site settings"\n` +
-    `3. Busca "Ventanas emergentes" o "Pop-ups"\n` +
-    `4. Activa para este sitio web\n\n` +
-    `💻 **EN COMPUTADORA:**\n` +
-    `1. Haz clic en el 🔒 candado en la barra de URL\n` +
-    `2. Busca "Ventanas emergentes" o "Pop-ups"\n` +
-    `3. Cambia a "Permitir"\n` +
-    `4. Recarga la página\n\n` +
-    `¿Quieres que reintentemos abrir WhatsApp?`
+// 🔥 FUNCIÓN PARA COPIAR ENLACE DEL ADMIN
+const copyAdminLink = async (adminUrl: string): Promise<boolean> => {
+  const copyAdmin = confirm(
+    `👑 **COPIAR ENLACE PARA ADMIN**\n\n` +
+    `¿Quieres copiar el enlace para notificar manualmente al administrador?`
   );
   
-  if (instructionsConfirmed) {
-    console.log('🔄 Reintentando después de instrucciones...');
-    
-    // Reintentar después de instrucciones
-    const retryClient = openWhatsApp(customerUrl);
-    
-    if (retryClient) {
-      console.log('✅ Reintento exitoso para cliente');
-      setTimeout(() => {
-        openWhatsApp(adminUrl, '_blank');
-      }, 1500);
-      return true;
+  if (copyAdmin) {
+    const success = await copyToClipboard(adminUrl);
+    if (success) {
+      alert('✅ **Enlace COPIADO**\n\nPégalo en tu navegador para notificar al administrador.');
     } else {
-      console.log('❌ Reintento fallido');
-      alert('⚠️ Sigue bloqueado. Debes configurar los permisos en tu navegador.');
-      return await copyLinksManually(customerUrl, adminUrl);
+      alert(`📋 Enlace manual:\n\n${adminUrl}`);
     }
+    return true;
   }
   
   return false;
-};
-
-// 🔥 FUNCIÓN PARA COPIAR ENLACES MANUALMENTE
-const copyLinksManually = async (customerUrl: string, adminUrl: string): Promise<boolean> => {
-  console.log('📋 Mostrando opciones de copia manual...');
-  
-  let copiedAny = false;
-  
-  // Copiar enlace del CLIENTE
-  const copyClient = confirm(
-    `📱 **COPIAR ENLACE PARA CLIENTE**\n\n` +
-    `Este enlace enviará las instrucciones al CLIENTE:\n\n` +
-    `¿Quieres copiarlo al portapapeles?`
-  );
-  
-  if (copyClient) {
-    const success = await copyToClipboard(customerUrl);
-    if (success) {
-      alert('✅ **Enlace del CLIENTE COPIADO**\n\n📱 Pégalo en tu navegador para enviar instrucciones al cliente.');
-      copiedAny = true;
-    } else {
-      alert(`📋 Enlace CLIENTE manual:\n\n${customerUrl}`);
-      copiedAny = true;
-    }
-  }
-  
-  // Copiar enlace del ADMIN
-  const copyAdmin = confirm(
-    `👑 **COPIAR ENLACE PARA ADMIN**\n\n` +
-    `Este enlace enviará la notificación a TI (ADMIN):\n\n` +
-    `¿Quieres copiarlo al portapapeles?`
-  );
-  
-  if (copyAdmin) {
-    const success = await copyToClipboard(adminUrl);
-    if (success) {
-      alert('✅ **Enlace del ADMIN COPIADO**\n\n📱 Pégalo para recibir la notificación del pedido.');
-      copiedAny = true;
-    } else {
-      alert(`📋 Enlace ADMIN manual:\n\n${adminUrl}`);
-      copiedAny = true;
-    }
-  }
-  
-  if (!copiedAny) {
-    alert(
-      `📋 **ENLACES DE WHATSAPP**\n\n` +
-      `**PARA EL CLIENTE:**\n${customerUrl}\n\n` +
-      `**PARA EL ADMIN:**\n${adminUrl}\n\n` +
-      `Copia y pega estos enlaces manualmente.`
-    );
-  }
-  
-  return true;
-};
-
-// 🔥 FUNCIÓN PARA INSTRUCCIONES SOLO DEL ADMIN
-const showAdminInstructions = async (adminUrl: string): Promise<void> => {
-  const copyAdmin = confirm(
-    `👑 **NO SE PUDO ABRIR WHATSAPP PARA ADMIN**\n\n` +
-    `¿Quieres copiar el enlace manualmente para recibir la notificación?`
-  );
-  
-  if (copyAdmin) {
-    const success = await copyToClipboard(adminUrl);
-    if (success) {
-      alert('✅ Enlace del ADMIN COPIADO');
-    } else {
-      alert(`📋 Enlace ADMIN manual:\n\n${adminUrl}`);
-    }
-  }
 };
 
 export const sendWhatsAppFree = async (
@@ -283,48 +192,7 @@ export const sendWhatsAppFree = async (
 
     const orderNumber = orderId.slice(-8);
 
-    // 🔥 MENSAJE PARA EL CLIENTE - va al NÚMERO DEL CLIENTE
-    const customerMessage = `¡Hola ${orderData.customerName}! 👋
-
-*¡Tu pedido en ${businessName} ha sido recibido!* 🎉
-
-📦 *Pedido:* #${orderNumber}
-🍽️ *Tu orden:*
-${orderData.items?.map((item: any) => 
-  `• ${item.quantity}x ${item.name} - $${(item.totalPrice || item.price * item.quantity).toFixed(2)}`
-).join('\n')}
-
-💰 *Total a pagar:* $${orderData.total?.toFixed(2)}
-
-💳 *Método de pago:* ${orderData.paymentMethod}
-
-${orderData.paymentMethod === 'Transferencia' ? 
-`🏦 *Datos para transferencia:*
-• Banco: ${bankDetails.bank}
-• Titular: ${bankDetails.holder}  
-• Cuenta: ${bankDetails.account}
-• Alias: ${bankDetails.alias}
-• Monto: $${orderData.total?.toFixed(2)}
-
-📎 *Envía el COMPROBANTE de transferencia por este chat*` : 
-`💵 *Pagarás en EFECTIVO al momento de la entrega*`}
-
-🗺️ *¡UBICACIÓN REQUERIDA PARA LA ENTREGA!*
-
-*Para entregar tu pedido necesitamos tu UBICACIÓN EXACTA:*
-
-1. 📍 Toca el *clip* 📎 en WhatsApp
-2. 🗺️ Selecciona *"Ubicación"*
-3. 📌 Envía tu *ubicación en tiempo real*
-4. 🏠 *O marca tu ubicación exacta* en el mapa
-
-${deliveryMessage}
-
-⏰ *Tu pedido estará listo en 20-30 minutos*
-
-¡Gracias por tu compra! 🎉`;
-
-    // 🔥 MENSAJE PARA EL ADMIN - va a TU NÚMERO (593999931458)
+    // 🔥 SOLO UN MENSAJE: PARA EL ADMIN (no se envía nada al cliente)
     const adminMessage = `🆕 *NUEVO PEDIDO - ${businessName.toUpperCase()}* 🎉
 
 📦 *Pedido:* #${orderNumber}
@@ -341,26 +209,35 @@ ${orderData.items?.map((item: any) =>
 
 💳 *Método de pago:* ${orderData.paymentMethod}
 
-🔔 *ACCIONES REQUERIDAS:*
+🔔 *INSTRUCCIONES PARA EL CLIENTE:*
 ${orderData.paymentMethod === 'Transferencia' ? 
-`• Solicitar COMPROBANTE de transferencia al cliente
-• Confirmar ubicación de entrega` : 
-`• Cobrar $${orderData.total?.toFixed(2)} en efectivo
-• Confirmar ubicación de entrega`}
+`• Realizar transferencia a:
+  Banco: ${bankDetails.bank}
+  Titular: ${bankDetails.holder}  
+  Cuenta: ${bankDetails.account}
+  Alias: ${bankDetails.alias}
+  Monto: $${orderData.total?.toFixed(2)}
+• Enviar COMPROBANTE por WhatsApp
+• Enviar UBICACIÓN exacta` : 
+`• Preparar $${orderData.total?.toFixed(2)} en efectivo
+• Enviar UBICACIÓN exacta por WhatsApp`}
+
+🗺️ *El cliente debe enviar su UBICACIÓN:*
+1. 📍 Tocar el clip 📎 en WhatsApp
+2. 🗺️ Seleccionar "Ubicación"  
+3. 📌 Enviar ubicación en tiempo real
 
 📍 *Notas del cliente:* ${orderData.notes || 'Ninguna'}
 
-📱 *Contactar al cliente:* https://wa.me/${formattedCustomerPhone}`;
+${deliveryMessage}`;
 
-    // 🔥 GENERAR URLs CORRECTAS
+    // 🔥 SOLO UNA URL: Para el ADMIN (tu número)
     const adminWhatsAppUrl = `https://wa.me/${formattedAdminPhone}?text=${encodeURIComponent(adminMessage)}`;
-    const customerWhatsAppUrl = `https://wa.me/${formattedCustomerPhone}?text=${encodeURIComponent(customerMessage)}`;
 
     console.log('📱 URL Admin (para 593999931458):', adminWhatsAppUrl);
-    console.log('📱 URL Cliente (para el cliente):', customerWhatsAppUrl);
 
-    // 🔥 EJECUTAR PROCESO MEJORADO
-    const success = await openWhatsAppWithInstructions(customerWhatsAppUrl, adminWhatsAppUrl);
+    // 🔥 SOLO UNA APERTURA: Para el ADMIN
+    const success = await openWhatsAppWithInstructions(adminWhatsAppUrl);
     return success;
 
   } catch (error) {
