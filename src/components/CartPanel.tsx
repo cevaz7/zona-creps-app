@@ -74,7 +74,7 @@ export default function CartPanel() {
       // 🔥 NOTAS OPCIONALES
       customerNotes = prompt('📝 ¿Alguna nota especial para el pedido? (opcional)') || '';
 
-      // 🔥 GENERAR ORDER_ID ÚNICO (USAR ESTE MISMO EN AMBOS LUGARES)
+      // 🔥 GENERAR ORDER_ID ÚNICO
       const orderId = 'order-' + Date.now();
 
       // Preparar datos del pedido
@@ -99,35 +99,42 @@ export default function CartPanel() {
 
       console.log('🟡 Procesando pedido...', orderId);
 
-      // 📱 ENVIAR WHATSAPP PRIMERO (con el mismo orderId)
+      // 📱 ENVIAR WHATSAPP PRIMERO
       console.log('📱 Enviando notificación por WhatsApp...');
       const whatsappSuccess = await sendWhatsAppFree(orderData, orderId, cleanPhone);
       
       if (!whatsappSuccess) {
-        alert('⚠️ Error al preparar WhatsApp. Verifica la configuración.');
-        return;
+        // 🔥 SI WHATSAPP FALLÓ, PREGUNTAR SI QUIERE CONTINUAR
+        const continueWithoutWhatsApp = confirm(
+          '⚠️ No se pudo abrir WhatsApp automáticamente.\n\n' +
+          'El pedido se guardará pero deberás contactar al cliente manualmente.\n\n' +
+          '¿Quieres continuar?'
+        );
+        
+        if (!continueWithoutWhatsApp) {
+          return;
+        }
       }
 
-      // 💾 GUARDAR EN FIRESTORE (pasar el mismo orderId)
+      // 💾 GUARDAR EN FIRESTORE
       console.log('💾 Guardando pedido en base de datos...');
       await sendFCMPushDirect(orderData, orderId);
 
       console.log('🟢 ÉXITO - Limpiando carrito...');
       clearCart();
       closeCart();
-      
-      // 🔥 MENSAJES SEPARADOS: Admin vs Cliente
-      if (user?.uid) {
-        // 🔥 SOLO PARA ADMIN - Mostrar detalles del pedido
-        const successMessage = paymentMethod === 'Transferencia' 
-          ? `✅ Pedido #${orderId.slice(-8)} realizado para ${customerName}\n\n📱 Se enviaron los datos de transferencia al cliente. Solicita el comprobante.`
-          : `✅ Pedido #${orderId.slice(-8)} realizado para ${customerName}\n\n📱 Se solicitó la ubicación al cliente. Recuerda cobrar $${cartTotal.toFixed(2)} en efectivo.`;
+
+      // 🔥 NOTIFICACIONES FINALES SEPARADAS
+      const isAdmin = user?.uid !== undefined;
+
+      if (isAdmin) {
+        const adminMessage = paymentMethod === 'Transferencia' 
+          ? `✅ Pedido #${orderId.slice(-8)} para ${customerName}\n\n📱 Se enviaron datos de transferencia al cliente. SOLICITA EL COMPROBANTE.`
+          : `✅ Pedido #${orderId.slice(-8)} para ${customerName}\n\n📱 Se solicitó ubicación al cliente. COBRAR $${cartTotal.toFixed(2)} en efectivo.`;
         
-        alert(successMessage);
+        alert(adminMessage);
       } else {
-        // 🔥 PARA CLIENTE - Mensaje genérico y amigable
-        const clientMessage = `¡Gracias por tu pedido ${customerName}! 🎉\n\nHemos recibido tu orden y te contactaremos pronto por WhatsApp.`;
-        alert(clientMessage);
+        alert(`¡Gracias por tu pedido ${customerName}! 🎉\n\nTe contactaremos por WhatsApp pronto.`);
       }
       
     } catch (error) {
