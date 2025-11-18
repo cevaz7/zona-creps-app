@@ -1,27 +1,35 @@
 // utils/sendWhatsAppFree.ts
 
+/**
+ * Limpia y normaliza un número ecuatoriano a formato WhatsApp internacional.
+ */
 export const formatPhoneEcuador = (phone: string): string => {
   let clean = phone.replace(/[\s\-\(\)\+]/g, "");
 
+  // Si empieza con 0 → removerlo
   if (clean.startsWith("0")) clean = clean.substring(1);
 
+  // Agregar prefijo 593 si no lo tiene
   if (!clean.startsWith("593")) clean = "593" + clean;
 
   return clean;
 };
 
-export const generateWhatsAppAdminMessage = (
+/**
+ * 🔥 Genera EL MENSAJE QUE EL CLIENTE RECIBE
+ * Contiene todo: pedido, transferencia, instrucciones de ubicación, etc.
+ */
+export const generateWhatsAppClientToAdminMessage = (
   orderData: any,
-  orderId: string,
-  customerPhone: string
+  orderId: string
 ): string => {
-  const adminPhone = "593999931458";
+  const adminPhone = "593999931458"; // número del negocio
   const business = "Zona Creps";
 
   const orderNumber = orderId.slice(-8);
-  const customerPhoneFormatted = formatPhoneEcuador(customerPhone);
 
-  const products = orderData.items
+  // Lista de productos
+  const productsList = orderData.items
     .map(
       (item: any) =>
         `• ${item.quantity}x ${item.name} - $${(
@@ -31,35 +39,52 @@ export const generateWhatsAppAdminMessage = (
     )
     .join("\n");
 
-  const message = `🆕 *NUEVO PEDIDO - ${business}*
+  const name = orderData.customerName;
+  const total = orderData.total.toFixed(2);
+
+  const message = `¡Hola ${name}! 👋
+
+Tu pedido en *${business}* ha sido recibido 🎉
 
 📦 *Pedido:* #${orderNumber}
-👤 *Cliente:* ${orderData.customerName}
-📞 *Teléfono:* ${customerPhoneFormatted}
 
-🍽️ *Productos:*
-${products}
+🍽 *Productos:*
+${productsList}
 
-💰 *TOTAL:* $${orderData.total.toFixed(2)}
-💳 *Pago:* ${orderData.paymentMethod}
+💰 *Total a pagar:* $${total}
 
-📌 *Notas:* ${orderData.notes || "Ninguna"}
+💳 *Para confirmar tu pedido, realiza la transferencia a:*
+🏦 Banco: Pichincha
+👤 Titular: Zona Creps
+📊 Cuenta: 1234567890
+🔖 Alias: zona.creps
+💵 Monto: $${total}
 
-📍 El cliente mandará la ubicación por WhatsApp.`;
+📎 *Envía el comprobante de pago por este mismo chat*
 
+📍 *Por favor envía tu ubicación para el delivery:*
+1️⃣ Toca el icono de 📎 (clip)  
+2️⃣ Elige “Ubicación”  
+3️⃣ Selecciona “Ubicación actual”  
+
+🚗 *Delivery gratuito* en un radio de 5 km  
+⏰ Tu pedido estará listo en *20-30 minutos*
+
+¡Gracias por tu compra! 🎉`;
+
+  // URL final de WhatsApp
   const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
+
   return url;
 };
 
 /**
- *  🔥 Esta función solo genera la URL.
- *     Quien debe abrirla es el componente con window.open()
- *     (desde un onClick para evitar bloqueos).
+ * 🔥 Retorna la URL para abrir WhatsApp
+ * NO abre la ventana — eso lo hace CartPanel
  */
 export const sendWhatsAppFree = (
   orderData: any,
-  orderId: string,
-  customerPhone: string
+  orderId: string
 ): string => {
-  return generateWhatsAppAdminMessage(orderData, orderId, customerPhone);
+  return generateWhatsAppClientToAdminMessage(orderData, orderId);
 };

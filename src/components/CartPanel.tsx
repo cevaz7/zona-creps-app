@@ -115,20 +115,20 @@ export default function CartPanel() {
       // -----------------------------------------------------------------
       // 📱 GENERAR LINK DE WHATSAPP
       // -----------------------------------------------------------------
-      const whatsappUrl = sendWhatsAppFree(orderData, orderId, cleanPhone);
+      const whatsappUrl = sendWhatsAppFree(orderData, orderId);
 
-      // ----------------------
+      // -------------------------
       // 🚨 ABRIR WHATSAPP
-      // ----------------------
-      const newWindow = window.open(whatsappUrl, "_blank");
+      // -------------------------
+      let newWindow = window.open(whatsappUrl, "_blank");
 
-      // ⚠️ SI EL POPUP FUE BLOQUEADO
+      // ⚠️ SI EL NAVEGADOR BLOQUEÓ EL POPUP:
       if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
         const retry = confirm(
-          "⚠️ El navegador bloqueó la ventana de WhatsApp.\n\n" +
+          "⚠️ Tu navegador bloqueó la apertura de WhatsApp.\n\n" +
             "📱 *EN CELULAR:*\n" +
             "• Toca los tres puntos (⋮) arriba a la derecha.\n" +
-            "• Entra a Configuración → Configuración del sitio.\n" +
+            "• Ve a Configuración → Configuración del sitio.\n" +
             "• Activa: Ventanas emergentes y redirecciones.\n\n" +
             "💻 *EN COMPUTADORA:*\n" +
             "• Haz clic en el candado (🔒) junto a la barra de dirección.\n" +
@@ -138,8 +138,14 @@ export default function CartPanel() {
         );
 
         if (retry) {
-          location.reload();
-          return;
+          // INTENTAR ABRIR OTRA VEZ SIN RECARGAR
+          newWindow = window.open(whatsappUrl, "_blank");
+
+          if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
+            alert("❌ No se pudo abrir WhatsApp. Activa las ventanas emergentes e intenta nuevamente.");
+          }
+
+          return; // ✔ No recargamos la página
         } else {
           alert("❌ No se pudo abrir WhatsApp. Activa las ventanas emergentes e intenta nuevamente.");
           return;
@@ -147,7 +153,7 @@ export default function CartPanel() {
       }
 
       // -----------------------------------------------------------------
-      // 💾 CREAR NOTIFICACIÓN FCM (PEDIDO NUEVO)
+      // 🔔 ENVIAR NOTIFICACIÓN PUSH AL ADMIN
       // -----------------------------------------------------------------
       await sendFCMPushDirect(orderData, orderId);
 
@@ -156,29 +162,18 @@ export default function CartPanel() {
       closeCart();
 
       // -----------------------------------------------------------------
-      // 🔥 MENSAJES DEPENDIENDO DEL ROL
+      // 🔥 MENSAJE FINAL DEPENDIENDO DEL ROL
       // -----------------------------------------------------------------
       if (isAdmin) {
-        if (paymentMethod === "Transferencia") {
-          alert(
-            `✅ Pedido #${orderId.slice(-8)} registrado\n\n` +
-              `📞 Cliente: ${customerName}\n` +
-              `📱 Teléfono: ${cleanPhone}\n\n` +
-              `💵 Método: Transferencia\n` +
-              `👉 Solicita el comprobante al cliente`
-          );
-        } else {
-          alert(
-            `✅ Pedido #${orderId.slice(-8)} registrado\n\n` +
-              `📞 Cliente: ${customerName}\n` +
-              `📱 Teléfono: ${cleanPhone}\n\n` +
-              `💵 Cobrar en efectivo: $${cartTotal.toFixed(2)}`
-          );
-        }
+        alert(
+          `✅ Pedido #${orderId.slice(-8)} registrado y mensaje listo para enviar.\n\n` +
+            `Cliente: ${customerName}\n` +
+            `Teléfono: ${cleanPhone}`
+        );
       } else {
         alert(
           `🎉 ¡Gracias por tu pedido ${customerName}!\n\n` +
-            `Te contactaremos pronto para confirmar tu orden.`
+            `Envíanos el comprobante y tu ubicación en WhatsApp.`
         );
       }
     } catch (error) {
