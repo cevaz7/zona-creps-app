@@ -5,7 +5,6 @@ import { useCart } from "@/context/CartContext";
 import { sendFCMPushDirect } from "@/utils/sendFCMPush";
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { getAuth } from 'firebase/auth';
 import { sendWhatsAppFree } from '@/utils/sendWhatsAppFree';
 
@@ -117,12 +116,19 @@ export default function CartPanel() {
       clearCart();
       closeCart();
       
-      // Mensaje de confirmación según método de pago
-      const successMessage = paymentMethod === 'Transferencia' 
-        ? `✅ Pedido #${orderId.slice(-8)} realizado para ${customerName}\n\n📱 Se enviaron los datos de transferencia al cliente. Solicita el comprobante.`
-        : `✅ Pedido #${orderId.slice(-8)} realizado para ${customerName}\n\n📱 Se solicitó la ubicación al cliente. Recuerda cobrar $${cartTotal.toFixed(2)} en efectivo.`;
-      
-      alert(successMessage);
+      // 🔥 MENSAJES SEPARADOS: Admin vs Cliente
+      if (user?.uid) {
+        // 🔥 SOLO PARA ADMIN - Mostrar detalles del pedido
+        const successMessage = paymentMethod === 'Transferencia' 
+          ? `✅ Pedido #${orderId.slice(-8)} realizado para ${customerName}\n\n📱 Se enviaron los datos de transferencia al cliente. Solicita el comprobante.`
+          : `✅ Pedido #${orderId.slice(-8)} realizado para ${customerName}\n\n📱 Se solicitó la ubicación al cliente. Recuerda cobrar $${cartTotal.toFixed(2)} en efectivo.`;
+        
+        alert(successMessage);
+      } else {
+        // 🔥 PARA CLIENTE - Mensaje genérico y amigable
+        const clientMessage = `¡Gracias por tu pedido ${customerName}! 🎉\n\nHemos recibido tu orden y te contactaremos pronto por WhatsApp.`;
+        alert(clientMessage);
+      }
       
     } catch (error) {
       console.error('❌ ERROR en handleFinalizeOrder:', error);

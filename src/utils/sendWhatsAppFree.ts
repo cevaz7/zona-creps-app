@@ -71,6 +71,9 @@ export const sendWhatsAppFree = async (
     console.log('📞 Admin:', formattedAdminPhone);
     console.log('📞 Cliente:', formattedCustomerPhone);
 
+    // 🔥 DETECTAR SI ES MODO PRUEBA (mismo admin y cliente)
+    const isSamePerson = formattedAdminPhone === formattedCustomerPhone;
+
     // Preparar detalles de productos
     const itemDetails = orderData.items?.map((item: any) => 
       `• ${item.quantity}x ${item.name} - $${(item.totalPrice || item.price * item.quantity).toFixed(2)}`
@@ -177,38 +180,47 @@ ${deliveryMessage}
 
     console.log('📱 WhatsApp Admin:', adminWhatsAppUrl);
     console.log('📱 WhatsApp Cliente:', customerWhatsAppUrl);
+    console.log('👤 Mismo admin y cliente?:', isSamePerson);
 
-    // 📱 SOLUCIÓN PARA BLOQUEO DE VENTANAS - UN SOLO CLICK
-    console.log('📱 Abriendo WhatsApp en una sola ventana...');
+    // 📱 SOLUCIÓN ALTERNATIVA SIMPLE - DETECCIÓN DE DISPOSITIVO
+    console.log('📱 Abriendo WhatsApp...');
 
-    // Crear un solo enlace y hacer clic
-    const openSingleWhatsApp = (url: string) => {
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    // Función para abrir WhatsApp de forma confiable
+    const openWhatsApp = (url: string) => {
+      // Método 1: Intentar con window.open
+      const newWindow = window.open(url, '_blank');
+      
+      // Método 2: Si falla, usar enlace temporal
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        console.log('⚠️ window.open falló, usando método alternativo...');
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     };
 
-    // 🔥 ESTRATEGIA MEJORADA: Abrir solo UNA ventana
-    // Primero el cliente, luego mostrar instrucción para el admin
-    openSingleWhatsApp(customerWhatsAppUrl);
-    
-    // Mostrar alerta para que el usuario abra manualmente la segunda
-    setTimeout(() => {
-      const openAdmin = confirm(
-        `📱 WhatsApp abierto para el cliente.\n\n` +
-        `¿Quieres abrir también WhatsApp para el ADMINISTRADOR?\n\n` +
-        `Si aceptas, se abrirá otra ventana de WhatsApp.`
-      );
+    // 🔥 ESTRATEGIA MEJORADA SEGÚN MODO
+    if (isSamePerson) {
+      // 🔧 MODO PRUEBA - Solo una ventana para admin
+      console.log('🔧 MODO PRUEBA: Abriendo solo WhatsApp para admin');
+      openWhatsApp(adminWhatsAppUrl);
+    } else {
+      // 🚀 MODO REAL - Ambas ventanas automáticamente
+      console.log('🚀 MODO REAL: Abriendo WhatsApp para cliente y admin');
       
-      if (openAdmin) {
-        openSingleWhatsApp(adminWhatsAppUrl);
-      }
-    }, 1000);
+      // Primero para el CLIENTE
+      openWhatsApp(customerWhatsAppUrl);
+      
+      // Luego para el ADMIN con delay
+      setTimeout(() => {
+        openWhatsApp(adminWhatsAppUrl);
+      }, 1500);
+    }
 
     return true;
 
