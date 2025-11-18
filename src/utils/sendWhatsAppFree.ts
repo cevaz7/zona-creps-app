@@ -12,9 +12,8 @@ interface WhatsAppConfig {
   deliveryMessage: string;
 }
 
-// 🔥 CONFIGURACIÓN CORREGIDA - FORMATO WHATSAPP
 export const WHATSAPP_CONFIG: WhatsAppConfig = {
-  adminPhone: '593999931458', // MANTÉN ESTE FORMATO: código país + número completo
+  adminPhone: '593999931458',
   businessName: 'Zona Creps',
   bankDetails: {
     bank: 'Pichincha',
@@ -25,33 +24,26 @@ export const WHATSAPP_CONFIG: WhatsAppConfig = {
   deliveryMessage: '🚗 Ofrecemos delivery gratuito en un radio de 5km'
 };
 
-// 🔥 FUNCIÓN PARA FORMATEAR NÚMEROS CORRECTAMENTE
 const formatPhoneForWhatsApp = (phone: string): string => {
-  // Eliminar espacios, guiones, paréntesis, etc.
   let cleanPhone = phone.replace(/[\s\-\(\)\+]/g, '');
   
-  // Si el número empieza con 0, quitarlo (para Ecuador)
   if (cleanPhone.startsWith('0')) {
     cleanPhone = cleanPhone.substring(1);
   }
   
-  // Si no tiene código de país, agregar 593 (Ecuador)
   if (!cleanPhone.startsWith('593') && cleanPhone.length === 9) {
     cleanPhone = '593' + cleanPhone;
   }
   
-  console.log('📞 Teléfono formateado:', phone, '→', cleanPhone);
   return cleanPhone;
 };
 
-// 🔥 FUNCIÓN PARA COPIAR AL PORTAPAPELES
 const copyToClipboard = async (text: string): Promise<boolean> => {
   try {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
       return true;
     } else {
-      // Fallback para navegadores más antiguos
       const textArea = document.createElement('textarea');
       textArea.value = text;
       textArea.style.position = 'fixed';
@@ -65,111 +57,121 @@ const copyToClipboard = async (text: string): Promise<boolean> => {
       return successful;
     }
   } catch (error) {
-    console.error('Error al copiar:', error);
     return false;
   }
 };
 
-// 🔥 FUNCIÓN PARA ABRIR WHATSAPP Y DETECTAR SI FUE BLOQUEADO
-const openWhatsAppWithDetection = (url: string, target: string = '_blank'): boolean => {
+// 🔥 FUNCIÓN MEJORADA: Primero intenta abrir automáticamente SIN mostrar mensajes
+const openWhatsAppSilent = (url: string): boolean => {
   try {
-    console.log('🔄 Intentando abrir WhatsApp...');
+    console.log('🔄 Intentando abrir WhatsApp silenciosamente...');
+    const newWindow = window.open(url, '_blank');
     
-    // Método 1: Intentar con window.open
-    const newWindow = window.open(url, target);
-    
-    // Verificar si fue bloqueado
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      console.log('❌ WhatsApp bloqueado por el navegador');
+      console.log('❌ Bloqueado en primer intento');
       return false;
     }
     
-    // Esperar un momento y verificar si la ventana sigue abierta
-    setTimeout(() => {
-      try {
-        if (newWindow.closed) {
-          console.log('❌ Ventana cerrada inmediatamente');
-        }
-      } catch (error) {
-        console.log('❌ No se puede verificar el estado de la ventana');
-      }
-    }, 500);
-    
-    console.log('✅ WhatsApp abierto exitosamente');
+    console.log('✅ Abierto exitosamente en primer intento');
     return true;
-    
   } catch (error) {
-    console.error('❌ Error al abrir WhatsApp:', error);
     return false;
   }
 };
 
-// 🔥 FUNCIÓN PARA MOSTRAR OPCIONES MANUALES SOLO SI FALLA LA APERTURA AUTOMÁTICA
-const showManualOptionsIfNeeded = async (customerUrl: string, adminUrl: string, isSamePerson: boolean): Promise<boolean> => {
+// 🔥 FUNCIÓN QUE SOLO SE ACTIVA SI EL PRIMER INTENTO FALLA
+const handleWhatsAppBlocked = async (customerUrl: string, adminUrl: string, isSamePerson: boolean, orderData: any): Promise<boolean> => {
   return new Promise(async (resolve) => {
-    // Preparar mensaje según el modo
-    const message = isSamePerson 
-      ? `🔧 **WHATSAPP BLOQUEADO - MODO PRUEBA**\n\nEl navegador bloqueó la apertura automática de WhatsApp.\n\n¿Quieres copiar los enlaces manualmente?`
-      : `📱 **WHATSAPP BLOQUEADO**\n\nEl navegador bloqueó la apertura automática de WhatsApp.\n\n¿Quieres copiar los enlaces manualmente?`;
+    const paymentMethodText = orderData.paymentMethod === 'Transferencia' 
+      ? '📎 Debes enviar el COMPROBANTE DE PAGO'
+      : '🗺️ Debes enviar tu UBICACIÓN EXACTA';
 
-    const userWantsManual = confirm(message);
+    // 🔥 PRIMERO: Dar instrucciones para desbloquear
+    const userChoice = confirm(
+      `📱 **WHATSAAP BLOQUEADO - ${orderData.paymentMethod.toUpperCase()}**\n\n` +
+      `${paymentMethodText} por WhatsApp para completar tu pedido.\n\n` +
+      `El navegador está bloqueando la apertura automática.\n\n` +
+      `¿Quieres ver instrucciones para desbloquearlo?`
+    );
 
-    if (userWantsManual) {
-      console.log('📋 Usuario eligió opciones manuales');
+    if (userChoice) {
+      // 🔥 MOSTRAR INSTRUCCIONES DE DESBLOQUEO
+      confirm(
+        `🔓 **INSTRUCCIONES PARA DESBLOQUEAR WHATSAPP**\n\n` +
+        `📱 **EN CELULAR:**\n` +
+        `1. Toca los 3 puntos ⋮ arriba\n` +
+        `2. Ve a "Configuración del sitio"\n` +
+        `3. Activa "Ventanas emergentes"\n\n` +
+        `💻 **EN COMPUTADORA:**\n` +
+        `1. Haz clic en el 🔒 candado en la barra de URL\n` +
+        `2. Selecciona "Permitir ventanas emergentes"\n\n` +
+        `Después de configurar, pulsa "Aceptar" para reintentar.`
+      );
+
+      // 🔥 REINTENTAR DESPUÉS DE INSTRUCCIONES
+      console.log('🔄 Reintentando después de instrucciones...');
       
-      let copiedAny = false;
-      
-      if (!isSamePerson) {
-        // 🔥 COPIAR ENLACE DEL CLIENTE
-        const copyClient = confirm(
-          `📱 **ENLACE PARA EL CLIENTE**\n\n` +
-          `Copia este enlace y ábrelo en tu navegador:\n\n` +
-          `${customerUrl}\n\n` +
-          `¿Quieres copiar este enlace al portapapeles?`
-        );
-        
-        if (copyClient) {
-          const success = await copyToClipboard(customerUrl);
-          if (success) {
-            alert('✅ Enlace del cliente COPIADO\n\nPégalo en tu navegador para abrir WhatsApp.');
-            copiedAny = true;
-          } else {
-            alert('❌ No se pudo copiar. Aquí está el enlace:\n\n' + customerUrl);
+      let retrySuccess = false;
+      if (isSamePerson) {
+        retrySuccess = openWhatsAppSilent(adminUrl);
+      } else {
+        retrySuccess = openWhatsAppSilent(customerUrl);
+        if (retrySuccess) {
+          setTimeout(() => openWhatsAppSilent(adminUrl), 1000);
+        }
+      }
+
+      // 🔥 SI EL REINTENTO FUNCIONA, TERMINAR AQUÍ
+      if (retrySuccess) {
+        console.log('✅ Reintento exitoso después de instrucciones');
+        alert('¡Perfecto! WhatsApp se abrió correctamente. 🎉\n\nEnvía la información requerida para completar tu pedido.');
+        resolve(true);
+        return;
+      }
+    }
+
+    // 🔥 SI LLEGAMOS AQUÍ, ES PORQUE SIGUE BLOQUEADO - OBLIGAR COPIAR ENLACES
+    console.log('❌ WhatsApp sigue bloqueado, forzando copia manual');
+    
+    let resolved = false;
+    while (!resolved) {
+      const copyChoice = confirm(
+        `📋 **COPIA MANUALMENTE - ES NECESARIO**\n\n` +
+        `Para completar tu pedido necesitas:\n\n` +
+        `• ${orderData.paymentMethod === 'Transferencia' ? 'Enviar comprobante de pago' : 'Enviar ubicación exacta'}\n\n` +
+        `¿Quieres copiar los enlaces de WhatsApp?`
+      );
+
+      if (copyChoice) {
+        if (!isSamePerson) {
+          const clientSuccess = await copyToClipboard(customerUrl);
+          if (clientSuccess) {
+            alert('✅ **ENLACE DEL CLIENTE COPIADO**\n\n📱 Pégalo en tu navegador para enviar instrucciones al cliente.');
           }
         }
-      }
-      
-      // 🔥 COPIAR ENLACE DEL ADMIN
-      const copyAdmin = confirm(
-        `👑 **ENLACE PARA EL ADMINISTRADOR**\n\n` +
-        `Copia este enlace y ábrelo en tu navegador:\n\n` +
-        `${adminUrl}\n\n` +
-        `¿Quieres copiar este enlace al portapapeles?`
-      );
-      
-      if (copyAdmin) {
-        const success = await copyToClipboard(adminUrl);
-        if (success) {
-          alert('✅ Enlace del administrador COPIADO\n\nPégalo en tu navegador para abrir WhatsApp.');
-          copiedAny = true;
+
+        const adminSuccess = await copyToClipboard(adminUrl);
+        if (adminSuccess) {
+          alert('✅ **ENLACE DEL ADMIN COPIADO**\n\n📱 Pégalo en tu navegador para recibir la notificación.');
+          resolved = true;
+        }
+      } else {
+        // 🔥 OBLIGAR A RESOLVER
+        const forceResolve = confirm(
+          `🚨 **PEDIDO INCOMPLETO**\n\n` +
+          `Sin WhatsApp no podemos procesar tu pedido.\n\n` +
+          `¿Estás seguro de que quieres continuar SIN enviar la información requerida?`
+        );
+
+        if (!forceResolve) {
+          continue; // Volver a mostrar opciones
         } else {
-          alert('❌ No se pudo copiar. Aquí está el enlace:\n\n' + adminUrl);
+          alert('⚠️ Pedido guardado pero INCOMPLETO.\n\nContacta manualmente para completarlo.');
+          resolved = true;
         }
       }
-      
-      if (!copiedAny) {
-        // 🔥 MOSTRAR TODOS LOS ENLACES
-        alert(
-          `📋 **ENLACES DE WHATSAPP**\n\n` +
-          `${!isSamePerson ? `**PARA EL CLIENTE:**\n${customerUrl}\n\n` : ''}` +
-          `**PARA EL ADMINISTRADOR:**\n${adminUrl}\n\n` +
-          `Copia y pega estos enlaces en tu navegador.`
-        );
-      }
-    } else {
-      console.log('❌ Usuario rechazó opciones manuales');
     }
-    
+
     resolve(true);
   });
 };
@@ -182,178 +184,127 @@ export const sendWhatsAppFree = async (
   try {
     const { adminPhone, businessName, bankDetails, deliveryMessage } = WHATSAPP_CONFIG;
     
-    // Validar número de admin
     if (!adminPhone || adminPhone === '593987654321') {
-      console.warn('⚠️ Configura tu número en WHATSAPP_CONFIG');
       alert('Por favor, configura tu número de WhatsApp en el sistema');
       return false;
     }
 
     if (!customerPhone) {
-      alert('❌ Se necesita el número de WhatsApp del cliente para enviar la ubicación');
+      alert('❌ Se necesita el número de WhatsApp del cliente');
       return false;
     }
 
-    // 🔥 FORMATEAR NÚMEROS CORRECTAMENTE
     const formattedAdminPhone = formatPhoneForWhatsApp(adminPhone);
     const formattedCustomerPhone = formatPhoneForWhatsApp(customerPhone);
-
-    console.log('📞 Admin:', formattedAdminPhone);
-    console.log('📞 Cliente:', formattedCustomerPhone);
-
-    // 🔥 DETECTAR MODO PRUEBA
     const isSamePerson = formattedAdminPhone === formattedCustomerPhone;
-    console.log('👤 Mismo admin y cliente?:', isSamePerson);
 
-    // Preparar detalles de productos
+    // Preparar mensajes
     const itemDetails = orderData.items?.map((item: any) => 
       `• ${item.quantity}x ${item.name} - $${(item.totalPrice || item.price * item.quantity).toFixed(2)}`
     ).join('\n') || '• Productos varios';
 
     const orderNumber = orderId.slice(-8);
-    const orderTime = new Date().toLocaleString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
 
-    // 🎯 MENSAJE PARA EL ADMINISTRADOR
+    // Mensaje para ADMIN
     const adminMessage = `🆕 *NUEVO PEDIDO - ${businessName.toUpperCase()}* 🎉
 
 📦 *Pedido:* #${orderNumber}
-👤 *Cliente:* ${orderData.customerName || 'Cliente'}
+👤 *Cliente:* ${orderData.customerName}
 📞 *Teléfono:* ${formattedCustomerPhone}
-⏰ *Fecha/Hora:* ${orderTime}
 
 🍽️ *PRODUCTOS:*
 ${itemDetails}
 
-💰 *TOTAL: $${orderData.total?.toFixed(2) || '0.00'}*
+💰 *TOTAL: $${orderData.total?.toFixed(2)}*
 
-💳 *MÉTODO DE PAGO:* ${orderData.paymentMethod || 'Por confirmar'}
+💳 *MÉTODO DE PAGO:* ${orderData.paymentMethod}
 
 ${orderData.paymentMethod === 'Transferencia' ? 
-`🏦 *PAGO POR TRANSFERENCIA*
-El cliente recibió los datos bancarios
+`✅ Pedir comprobante al cliente` : 
+`🗺️ Cliente debe enviar ubicación exacta`}
 
-✅ *Pedir comprobante al cliente*` : 
-`💵 *PAGO EN EFECTIVO*
-El cliente debe enviar su ubicación exacta
+📍 *NOTAS:* ${orderData.notes || 'Ninguna'}`;
 
-💰 *COBRAR: $${orderData.total?.toFixed(2) || '0.00'}*`}
-
-📍 *NOTAS:* ${orderData.notes || 'Ninguna'}
-
-📱 *Contactar al cliente:* https://wa.me/${formattedCustomerPhone}`;
-
-    // 🎯 MENSAJE PARA EL CLIENTE (SEGÚN MÉTODO DE PAGO)
+    // Mensaje para CLIENTE
     let customerMessage = '';
-
     if (orderData.paymentMethod === 'Transferencia') {
       customerMessage = `¡Hola ${orderData.customerName}! 👋
 
-Tu pedido en *${businessName}* ha sido recibido 🎉
+Tu pedido en *${businessName}* 🎉
 
 📦 *Pedido:* #${orderNumber}
 🍽️ *Productos:*
 ${itemDetails}
 
-💰 *Total a pagar:* $${orderData.total?.toFixed(2) || '0.00'}
+💰 *Total:* $${orderData.total?.toFixed(2)}
 
-💳 *Para confirmar tu pedido, realiza la transferencia a:*
-🏦 Banco: ${bankDetails.bank}
-👤 Titular: ${bankDetails.holder}
-📊 Cuenta: ${bankDetails.account}
-🔖 Alias: ${bankDetails.alias}
-💵 Monto: $${orderData.total?.toFixed(2) || '0.00'}
+💳 *Transferencia a:*
+🏦 ${bankDetails.bank}
+👤 ${bankDetails.holder}
+📊 ${bankDetails.account}
+🔖 ${bankDetails.alias}
 
-📎 *Envía el comprobante de pago por este mismo chat*
-
-${deliveryMessage}
-
-⏰ *Tu pedido estará listo en aproximadamente 20-30 minutos*
-
-¡Gracias por tu compra! 🎉`;
+📎 Envía el comprobante por este chat`;
     } else {
-      // 🗺️ MENSAJE PARA EFECTIVO - SOLICITANDO UBICACIÓN
       customerMessage = `¡Hola ${orderData.customerName}! 👋
 
-Tu pedido en *${businessName}* ha sido recibido 🎉
+Tu pedido en *${businessName}* 🎉
 
 📦 *Pedido:* #${orderNumber}
 🍽️ *Productos:*
 ${itemDetails}
 
-💰 *Total a pagar:* $${orderData.total?.toFixed(2) || '0.00'}
+💰 *Total:* $${orderData.total?.toFixed(2)}
 
-💵 *MÉTODO DE PAGO: EFECTIVO*
+🗺️ *Envía tu UBICACIÓN EXACTA:*
+1. 📍 Toca el clip 📎 
+2. 🗺️ Selecciona "Ubicación"
+3. 📌 Envía ubicación en tiempo real
 
-🗺️ *¡IMPORTANTE! Para la entrega necesitamos tu UBICACIÓN EXACTA:*
-
-1. 📍 Haz clic en el *clip* 📎 de WhatsApp
-2. 🗺️ Selecciona *"Ubicación"*
-3. 📌 Envía tu *ubicación en tiempo real*
-4. 🏠 O marca tu *ubicación exacta* en el mapa
-
-${deliveryMessage}
-
-⏰ *Tu pedido estará listo en aproximadamente 20-30 minutos*
-
-¡Gracias por tu compra! 🎉`;
+${deliveryMessage}`;
     }
 
-    // 🔗 GENERAR ENLACES DE WHATSAPP
     const adminWhatsAppUrl = `https://wa.me/${formattedAdminPhone}?text=${encodeURIComponent(adminMessage)}`;
     const customerWhatsAppUrl = `https://wa.me/${formattedCustomerPhone}?text=${encodeURIComponent(customerMessage)}`;
 
-    console.log('📱 WhatsApp Admin:', adminWhatsAppUrl);
-    console.log('📱 WhatsApp Cliente:', customerWhatsAppUrl);
-
-    // 🔥 PRIMERO INTENTAR APERTURA AUTOMÁTICA
-    console.log('🚀 Intentando apertura automática de WhatsApp...');
+    // 🔥 ESTRATEGIA MEJORADA:
+    // 1. PRIMERO: Intentar abrir SILENCIOSAMENTE
+    console.log('🚀 Intento silencioso de apertura...');
     
-    let autoOpenSuccess = false;
-    
+    let firstTrySuccess = false;
     if (isSamePerson) {
-      // 🔧 MODO PRUEBA: Solo abrir admin
-      autoOpenSuccess = openWhatsAppWithDetection(adminWhatsAppUrl);
+      firstTrySuccess = openWhatsAppSilent(adminWhatsAppUrl);
     } else {
-      // 🚀 MODO REAL: Abrir cliente primero
-      const clientSuccess = openWhatsAppWithDetection(customerWhatsAppUrl);
-      
-      // Esperar un poco y abrir admin
-      setTimeout(() => {
-        const adminSuccess = openWhatsAppWithDetection(adminWhatsAppUrl, '_blank');
-        if (!adminSuccess) {
-          console.log('❌ No se pudo abrir WhatsApp para admin');
-        }
-      }, 1000);
-      
-      autoOpenSuccess = clientSuccess;
+      firstTrySuccess = openWhatsAppSilent(customerWhatsAppUrl);
+      if (firstTrySuccess) {
+        setTimeout(() => openWhatsAppSilent(adminWhatsAppUrl), 1000);
+      }
     }
 
-    // 🔥 SOLO SI FALLA LA APERTURA AUTOMÁTICA, MOSTRAR OPCIONES MANUALES
-    if (!autoOpenSuccess) {
-      console.log('❌ Apertura automática fallida, mostrando opciones manuales...');
-      await showManualOptionsIfNeeded(customerWhatsAppUrl, adminWhatsAppUrl, isSamePerson);
+    // 2. SOLO SI FALLA EL PRIMER INTENTO, MOSTRAR MENSAJES
+    if (!firstTrySuccess) {
+      console.log('❌ Primer intento fallido, mostrando ayuda...');
+      await handleWhatsAppBlocked(customerWhatsAppUrl, adminWhatsAppUrl, isSamePerson, {
+        ...orderData,
+        orderId: orderNumber
+      });
     } else {
-      console.log('✅ Apertura automática exitosa');
+      console.log('✅ WhatsApp abierto automáticamente sin mensajes');
+      // 🔥 MENSAJE POSITIVO SI SE ABRIÓ CORRECTAMENTE
+      setTimeout(() => {
+        alert(`✅ WhatsApp abierto\n\n${
+          orderData.paymentMethod === 'Transferencia' 
+            ? '📎 El cliente debe enviar el comprobante' 
+            : '🗺️ El cliente debe enviar la ubicación'
+        }`);
+      }, 2000);
     }
 
     return true;
 
   } catch (error) {
-    console.error('❌ Error enviando WhatsApp:', error);
-    
-    // 🔥 FALLBACK EN CASO DE ERROR
-    alert(
-      '❌ Error al preparar WhatsApp\n\n' +
-      'Por favor, contacta al administrador o intenta realizar el pedido nuevamente.'
-    );
-    
+    console.error('❌ Error:', error);
+    alert('Error al procesar WhatsApp. Contacta al administrador.');
     return false;
   }
 };
