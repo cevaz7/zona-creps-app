@@ -7,58 +7,130 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { getAuth } from 'firebase/auth';
+import { sendWhatsAppFree } from '@/utils/sendWhatsAppFree';
 
 export default function CartPanel() {
   const { isCartOpen, closeCart, cartItems, removeFromCart, cartTotal, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
 
-const handleFinalizeOrder = async () => {
-  try {
-    setIsProcessing(true);
-    
-    if (cartItems.length === 0) {
-      alert('El carrito está vacío');
-      return;
+  const handleFinalizeOrder = async () => {
+    try {
+      setIsProcessing(true);
+      
+      if (cartItems.length === 0) {
+        alert('🛒 El carrito está vacío');
+        return;
+      }
+
+      // 🔥 OBTENER USUARIO DE FIREBASE AUTH
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const userName = user?.displayName || user?.email?.split('@')[0] || 'Cliente';
+      const userEmail = user?.email || '';
+
+      // 🔥 CAPTURAR DATOS ADICIONALES DEL PEDIDO
+      let customerName = userName;
+      let customerPhone = '';
+      let paymentMethod = '';
+      let customerNotes = '';
+
+      // Solicitar nombre (puede editar el que viene de Firebase)
+      const nameInput = prompt('👤 ¿Nombre del cliente?', customerName);
+      if (nameInput) {
+        customerName = nameInput;
+      } else if (!nameInput && customerName === 'Cliente') {
+        alert('❌ Se requiere el nombre del cliente');
+        return;
+      }
+
+      // 🔥 TELÉFONO OBLIGATORIO
+      customerPhone = prompt('📞 ¿Número de WhatsApp del cliente? (OBLIGATORIO para enviar instrucciones)') || '';
+      
+      if (!customerPhone) {
+        alert('❌ El número de WhatsApp es OBLIGATORIO para enviar instrucciones de entrega');
+        return;
+      }
+
+      // Validar formato básico de teléfono
+      const cleanPhone = customerPhone.replace(/\s+/g, '').replace('+', '');
+      if (cleanPhone.length < 10) {
+        alert('❌ Número de WhatsApp inválido. Debe tener al menos 10 dígitos');
+        return;
+      }
+
+      // 🔥 MÉTODO DE PAGO
+      const paymentInput = prompt(
+        `💳 Método de pago para ${customerName}:\n\n1. Transferencia Bancaria\n2. Efectivo\n\nEscribe "1" o "2":`
+      );
+
+      if (paymentInput === '1') {
+        paymentMethod = 'Transferencia';
+      } else if (paymentInput === '2') {
+        paymentMethod = 'Efectivo';
+      } else {
+        alert('❌ Método de pago no válido');
+        return;
+      }
+
+      // 🔥 NOTAS OPCIONALES
+      customerNotes = prompt('📝 ¿Alguna nota especial para el pedido? (opcional)') || '';
+
+      // 🔥 GENERAR ORDER_ID ÚNICO (USAR ESTE MISMO EN AMBOS LUGARES)
+      const orderId = 'order-' + Date.now();
+
+      // Preparar datos del pedido
+      const orderData = {
+        items: cartItems.map(item => ({
+          name: item.product.nombre,
+          quantity: item.quantity,
+          price: item.product.precioBase,
+          totalPrice: item.totalPrice,
+          selectedOptions: item.selectedOptions,
+          productId: item.product.id
+        })),
+        total: cartTotal,
+        customerName: customerName,
+        customerEmail: userEmail,
+        customerId: user?.uid || '',
+        paymentMethod: paymentMethod,
+        customerPhone: cleanPhone,
+        notes: customerNotes,
+        status: 'pending'
+      };
+
+      console.log('🟡 Procesando pedido...', orderId);
+
+      // 📱 ENVIAR WHATSAPP PRIMERO (con el mismo orderId)
+      console.log('📱 Enviando notificación por WhatsApp...');
+      const whatsappSuccess = await sendWhatsAppFree(orderData, orderId, cleanPhone);
+      
+      if (!whatsappSuccess) {
+        alert('⚠️ Error al preparar WhatsApp. Verifica la configuración.');
+        return;
+      }
+
+      // 💾 GUARDAR EN FIRESTORE (pasar el mismo orderId)
+      console.log('💾 Guardando pedido en base de datos...');
+      await sendFCMPushDirect(orderData, orderId);
+
+      console.log('🟢 ÉXITO - Limpiando carrito...');
+      clearCart();
+      closeCart();
+      
+      // Mensaje de confirmación según método de pago
+      const successMessage = paymentMethod === 'Transferencia' 
+        ? `✅ Pedido #${orderId.slice(-8)} realizado para ${customerName}\n\n📱 Se enviaron los datos de transferencia al cliente. Solicita el comprobante.`
+        : `✅ Pedido #${orderId.slice(-8)} realizado para ${customerName}\n\n📱 Se solicitó la ubicación al cliente. Recuerda cobrar $${cartTotal.toFixed(2)} en efectivo.`;
+      
+      alert(successMessage);
+      
+    } catch (error) {
+      console.error('❌ ERROR en handleFinalizeOrder:', error);
+      alert('❌ Error al procesar el pedido. Por favor, intenta nuevamente.');
+    } finally {
+      setIsProcessing(false);
     }
-
-    // 🔥 OBTENER USUARIO DE FIREBASE AUTH
-    const auth = getAuth();
-    const user = auth.currentUser;
-    const userName = user?.displayName || user?.email?.split('@')[0] || 'Cliente';
-    const userEmail = user?.email || '';
-
-    // Preparar datos del pedido
-    const orderData = {
-      items: cartItems.map(item => ({
-        name: item.product.nombre,
-        quantity: item.quantity,
-        price: item.product.precioBase,
-        totalPrice: item.totalPrice,
-        selectedOptions: item.selectedOptions,
-        productId: item.product.id
-      })),
-      total: cartTotal,
-      customerName: userName, // 🔥 NOMBRE REAL
-      customerEmail: userEmail, // 🔥 EMAIL REAL  
-      customerId: user?.uid || '', // 🔥 ID DEL USUARIO
-      status: 'pending'
-    };
-
-    // Enviar pedido y notificación
-    const orderId = 'order-' + Date.now();
-    await sendFCMPushDirect(orderData, orderId);
-
-    clearCart();
-    closeCart();
-    alert('¡Pedido realizado con éxito! Te notificaremos cuando esté listo.');
-    
-  } catch (error) {
-    console.error('Error al procesar el pedido:', error);
-    alert('Error al procesar el pedido. Por favor, intenta nuevamente.');
-  } finally {
-    setIsProcessing(false);
-  }
-};
+  };
 
   if (!isCartOpen) return null;
 
@@ -128,7 +200,16 @@ const handleFinalizeOrder = async () => {
             <span className="font-bold text-2xl text-brand-blue">${cartTotal.toFixed(2)}</span>
           </div>
           
-          {/* BOTÓN ACTUALIZADO - Ahora usa handleFinalizeOrder directamente */}
+          {/* Información adicional sobre el proceso */}
+          {cartItems.length > 0 && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-xs text-blue-700 text-center">
+                📱 Al finalizar, se abrirá WhatsApp para confirmar el pedido
+              </p>
+            </div>
+          )}
+          
+          {/* BOTÓN ACTUALIZADO */}
           <button
             onClick={handleFinalizeOrder}
             disabled={cartItems.length === 0 || isProcessing}

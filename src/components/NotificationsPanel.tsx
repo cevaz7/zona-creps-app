@@ -26,6 +26,10 @@ interface Order {
   customerName: string;
   customerEmail?: string;
   customerId?: string;
+  // 🔥 NUEVOS CAMPOS QUE CAPTURAMOS
+  paymentMethod?: string;
+  customerPhone?: string;
+  notes?: string;
   status: string;
   createdAt: any;
 }
@@ -342,13 +346,40 @@ export default function NotificationsPanel() {
                 </button>
                 
                 <div className="flex justify-between items-start mb-4">
-                  <div>
+                  <div className="flex-1">
                     <h4 className="font-bold text-brand-brown text-lg">
                       Pedido #{(order.orderId || order.id).slice(-8)}
                     </h4>
                     <p className="text-sm text-gray-700">
                       👤 Cliente: <span className="font-semibold">{order.customerName}</span>
                     </p>
+                    
+                    {/* 🔥 MOSTRAR MÉTODO DE PAGO */}
+                    {order.paymentMethod && (
+                      <p className="text-sm text-gray-700">
+                        💳 Pago: <span className={`font-semibold ${
+                          order.paymentMethod === 'Transferencia' ? 'text-blue-600' : 'text-green-600'
+                        }`}>
+                          {order.paymentMethod}
+                        </span>
+                      </p>
+                    )}
+                    
+                    {/* 🔥 MOSTRAR TELÉFONO SI EXISTE */}
+                    {order.customerPhone && (
+                      <p className="text-sm text-gray-700 flex items-center gap-1">
+                        📞 
+                        <a 
+                          href={`https://wa.me/${order.customerPhone}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline font-semibold"
+                        >
+                          {order.customerPhone}
+                        </a>
+                      </p>
+                    )}
+                    
                     {order.customerEmail && (
                       <p className="text-xs text-gray-600">
                         📧 {order.customerEmail}
@@ -368,6 +399,16 @@ export default function NotificationsPanel() {
                      '❓ ' + order.status}
                   </span>
                 </div>
+
+                {/* 🔥 MOSTRAR NOTAS SI EXISTEN */}
+                {order.notes && (
+                  <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800 flex items-start gap-2">
+                      <span className="font-semibold">📝 Notas:</span>
+                      {order.notes}
+                    </p>
+                  </div>
+                )}
 
                 {/* Items del pedido */}
                 <div className="mb-4">
@@ -401,6 +442,18 @@ export default function NotificationsPanel() {
                       >
                         ✅ Marcar Listo
                       </button>
+                    )}
+                    
+                    {/* 🔥 BOTÓN DE WHATSAPP PARA CONTACTAR AL CLIENTE */}
+                    {order.customerPhone && (
+                      <a
+                        href={`https://wa.me/${order.customerPhone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors flex items-center gap-1"
+                      >
+                        💬 WhatsApp
+                      </a>
                     )}
                   </div>
                 </div>
