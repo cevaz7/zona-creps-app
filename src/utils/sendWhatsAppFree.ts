@@ -1,5 +1,4 @@
 // utils/sendWhatsAppFree.ts
-import { openMultipleWhatsApp } from './whatsappOpener';
 
 interface WhatsAppConfig {
   adminPhone: string;
@@ -45,9 +44,134 @@ const formatPhoneForWhatsApp = (phone: string): string => {
   return cleanPhone;
 };
 
-// 🔥 DETECTAR SI ES MODO PRUEBA (mismo admin y cliente)
-const isTestMode = (adminPhone: string, customerPhone: string): boolean => {
-  return adminPhone === customerPhone;
+// 🔥 FUNCIÓN PARA COPIAR AL PORTAPAPELES
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } else {
+      // Fallback para navegadores más antiguos
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return successful;
+    }
+  } catch (error) {
+    console.error('Error al copiar:', error);
+    return false;
+  }
+};
+
+// 🔥 FUNCIÓN PARA ABRIR WHATSAPP Y DETECTAR SI FUE BLOQUEADO
+const openWhatsAppWithDetection = (url: string, target: string = '_blank'): boolean => {
+  try {
+    console.log('🔄 Intentando abrir WhatsApp...');
+    
+    // Método 1: Intentar con window.open
+    const newWindow = window.open(url, target);
+    
+    // Verificar si fue bloqueado
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      console.log('❌ WhatsApp bloqueado por el navegador');
+      return false;
+    }
+    
+    // Esperar un momento y verificar si la ventana sigue abierta
+    setTimeout(() => {
+      try {
+        if (newWindow.closed) {
+          console.log('❌ Ventana cerrada inmediatamente');
+        }
+      } catch (error) {
+        console.log('❌ No se puede verificar el estado de la ventana');
+      }
+    }, 500);
+    
+    console.log('✅ WhatsApp abierto exitosamente');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Error al abrir WhatsApp:', error);
+    return false;
+  }
+};
+
+// 🔥 FUNCIÓN PARA MOSTRAR OPCIONES MANUALES SOLO SI FALLA LA APERTURA AUTOMÁTICA
+const showManualOptionsIfNeeded = async (customerUrl: string, adminUrl: string, isSamePerson: boolean): Promise<boolean> => {
+  return new Promise(async (resolve) => {
+    // Preparar mensaje según el modo
+    const message = isSamePerson 
+      ? `🔧 **WHATSAPP BLOQUEADO - MODO PRUEBA**\n\nEl navegador bloqueó la apertura automática de WhatsApp.\n\n¿Quieres copiar los enlaces manualmente?`
+      : `📱 **WHATSAPP BLOQUEADO**\n\nEl navegador bloqueó la apertura automática de WhatsApp.\n\n¿Quieres copiar los enlaces manualmente?`;
+
+    const userWantsManual = confirm(message);
+
+    if (userWantsManual) {
+      console.log('📋 Usuario eligió opciones manuales');
+      
+      let copiedAny = false;
+      
+      if (!isSamePerson) {
+        // 🔥 COPIAR ENLACE DEL CLIENTE
+        const copyClient = confirm(
+          `📱 **ENLACE PARA EL CLIENTE**\n\n` +
+          `Copia este enlace y ábrelo en tu navegador:\n\n` +
+          `${customerUrl}\n\n` +
+          `¿Quieres copiar este enlace al portapapeles?`
+        );
+        
+        if (copyClient) {
+          const success = await copyToClipboard(customerUrl);
+          if (success) {
+            alert('✅ Enlace del cliente COPIADO\n\nPégalo en tu navegador para abrir WhatsApp.');
+            copiedAny = true;
+          } else {
+            alert('❌ No se pudo copiar. Aquí está el enlace:\n\n' + customerUrl);
+          }
+        }
+      }
+      
+      // 🔥 COPIAR ENLACE DEL ADMIN
+      const copyAdmin = confirm(
+        `👑 **ENLACE PARA EL ADMINISTRADOR**\n\n` +
+        `Copia este enlace y ábrelo en tu navegador:\n\n` +
+        `${adminUrl}\n\n` +
+        `¿Quieres copiar este enlace al portapapeles?`
+      );
+      
+      if (copyAdmin) {
+        const success = await copyToClipboard(adminUrl);
+        if (success) {
+          alert('✅ Enlace del administrador COPIADO\n\nPégalo en tu navegador para abrir WhatsApp.');
+          copiedAny = true;
+        } else {
+          alert('❌ No se pudo copiar. Aquí está el enlace:\n\n' + adminUrl);
+        }
+      }
+      
+      if (!copiedAny) {
+        // 🔥 MOSTRAR TODOS LOS ENLACES
+        alert(
+          `📋 **ENLACES DE WHATSAPP**\n\n` +
+          `${!isSamePerson ? `**PARA EL CLIENTE:**\n${customerUrl}\n\n` : ''}` +
+          `**PARA EL ADMINISTRADOR:**\n${adminUrl}\n\n` +
+          `Copia y pega estos enlaces en tu navegador.`
+        );
+      }
+    } else {
+      console.log('❌ Usuario rechazó opciones manuales');
+    }
+    
+    resolve(true);
+  });
 };
 
 export const sendWhatsAppFree = async (
@@ -78,8 +202,8 @@ export const sendWhatsAppFree = async (
     console.log('📞 Cliente:', formattedCustomerPhone);
 
     // 🔥 DETECTAR MODO PRUEBA
-    const testMode = isTestMode(formattedAdminPhone, formattedCustomerPhone);
-    console.log('🔧 Modo prueba:', testMode);
+    const isSamePerson = formattedAdminPhone === formattedCustomerPhone;
+    console.log('👤 Mismo admin y cliente?:', isSamePerson);
 
     // Preparar detalles de productos
     const itemDetails = orderData.items?.map((item: any) => 
@@ -181,58 +305,55 @@ ${deliveryMessage}
 ¡Gracias por tu compra! 🎉`;
     }
 
-    // 🔥 USAR LA SOLUCIÓN UNIVERSAL CON WHATSAPPOPENER
-    console.log('📱 Usando WhatsAppOpener universal...');
+    // 🔗 GENERAR ENLACES DE WHATSAPP
+    const adminWhatsAppUrl = `https://wa.me/${formattedAdminPhone}?text=${encodeURIComponent(adminMessage)}`;
+    const customerWhatsAppUrl = `https://wa.me/${formattedCustomerPhone}?text=${encodeURIComponent(customerMessage)}`;
 
-    const chatsToOpen = [
-      { phone: formattedCustomerPhone, message: customerMessage },
-      { phone: formattedAdminPhone, message: adminMessage }
-    ];
+    console.log('📱 WhatsApp Admin:', adminWhatsAppUrl);
+    console.log('📱 WhatsApp Cliente:', customerWhatsAppUrl);
 
-    // 🔥 ESTRATEGIA DIFERENCIADA: MODO PRUEBA vs MODO REAL
-    if (testMode) {
-      console.log('🔧 MODO PRUEBA: Admin y cliente son la misma persona');
-      
-      // En modo prueba, abrir solo UNA ventana con mensaje combinado
-      const testMessage = `🔧 *MODO PRUEBA - ${businessName}*\n\n` +
-        `Estás probando el sistema como ADMIN y CLIENTE\n\n` +
-        `📦 Pedido: #${orderNumber}\n` +
-        `👤 Cliente: ${orderData.customerName}\n` +
-        `💰 Total: $${orderData.total?.toFixed(2)}\n` +
-        `💳 Método: ${orderData.paymentMethod}\n` +
-        `📍 Notas: ${orderData.notes || 'Prueba del sistema'}\n\n` +
-        `✅ En un pedido real:\n` +
-        `• Cliente recibiría: ${orderData.paymentMethod === 'Transferencia' ? 'datos bancarios' : 'solicitud de ubicación'}\n` +
-        `• Admin recibiría: notificación completa del pedido`;
-
-      const testChat = [{ phone: formattedAdminPhone, message: testMessage }];
-      return openMultipleWhatsApp(testChat);
-      
+    // 🔥 PRIMERO INTENTAR APERTURA AUTOMÁTICA
+    console.log('🚀 Intentando apertura automática de WhatsApp...');
+    
+    let autoOpenSuccess = false;
+    
+    if (isSamePerson) {
+      // 🔧 MODO PRUEBA: Solo abrir admin
+      autoOpenSuccess = openWhatsAppWithDetection(adminWhatsAppUrl);
     } else {
-      console.log('🚀 MODO REAL: Cliente diferente al admin');
+      // 🚀 MODO REAL: Abrir cliente primero
+      const clientSuccess = openWhatsAppWithDetection(customerWhatsAppUrl);
       
-      // 🚀 MODO REAL - Usar la solución universal
-      const success = openMultipleWhatsApp(chatsToOpen);
-
-      if (!success) {
-        console.error('❌ No se pudo abrir WhatsApp automáticamente');
-        
-        // 🔥 FALLBACK: Mostrar enlaces manuales
-        const fallbackMessage = `📱 Para completar tu pedido:\n\n` +
-          `1. CLIENTE: ${customerMessage.substring(0, 100)}...\n` +
-          `   Enlace: https://wa.me/${formattedCustomerPhone}?text=${encodeURIComponent(customerMessage)}\n\n` +
-          `2. ADMIN: ${adminMessage.substring(0, 100)}...\n` +
-          `   Enlace: https://wa.me/${formattedAdminPhone}?text=${encodeURIComponent(adminMessage)}`;
-        
-        alert(fallbackMessage);
-      }
-
-      return success;
+      // Esperar un poco y abrir admin
+      setTimeout(() => {
+        const adminSuccess = openWhatsAppWithDetection(adminWhatsAppUrl, '_blank');
+        if (!adminSuccess) {
+          console.log('❌ No se pudo abrir WhatsApp para admin');
+        }
+      }, 1000);
+      
+      autoOpenSuccess = clientSuccess;
     }
+
+    // 🔥 SOLO SI FALLA LA APERTURA AUTOMÁTICA, MOSTRAR OPCIONES MANUALES
+    if (!autoOpenSuccess) {
+      console.log('❌ Apertura automática fallida, mostrando opciones manuales...');
+      await showManualOptionsIfNeeded(customerWhatsAppUrl, adminWhatsAppUrl, isSamePerson);
+    } else {
+      console.log('✅ Apertura automática exitosa');
+    }
+
+    return true;
 
   } catch (error) {
     console.error('❌ Error enviando WhatsApp:', error);
-    alert('Error al preparar WhatsApp. Por favor, contacta al administrador.');
+    
+    // 🔥 FALLBACK EN CASO DE ERROR
+    alert(
+      '❌ Error al preparar WhatsApp\n\n' +
+      'Por favor, contacta al administrador o intenta realizar el pedido nuevamente.'
+    );
+    
     return false;
   }
 };
