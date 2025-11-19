@@ -18,6 +18,8 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  
+
   useEffect(() => {
     setMounted(true);
     const handleScroll = () => {
@@ -26,6 +28,7 @@ const Header = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+  
 
   const handleSignOut = async () => {
     try {
@@ -240,7 +243,7 @@ const Header = () => {
 
       {/* Modales */}
       {isModalOpen && <LoginModal onClose={() => setIsModalOpen(false)} />}
-      <CartPanel />
+      <CartPanel/>
     </>
   );
 };

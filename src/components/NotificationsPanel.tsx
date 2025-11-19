@@ -447,7 +447,7 @@ export default function NotificationsPanel() {
                     {/* 🔥 BOTÓN DE WHATSAPP PARA CONTACTAR AL CLIENTE */}
                     {order.customerPhone && (
                       <a
-                        href={`https://wa.me/${order.customerPhone}`}
+                        href={`https://wa.me/593${order.customerPhone.replace(/\D/g, '').slice(1)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors flex items-center gap-1"

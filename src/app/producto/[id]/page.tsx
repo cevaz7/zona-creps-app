@@ -119,7 +119,22 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    addToCart({ product, quantity, selectedOptions, totalPrice });
+    
+    // Crear selectedOptions con títulos en lugar de IDs
+    const selectedOptionsWithTitles: any = {};
+    
+    Object.entries(selectedOptions).forEach(([groupId, value]) => {
+      const group = optionGroups.find(g => g.id === groupId);
+      const groupTitle = group?.titulo || groupId;
+      selectedOptionsWithTitles[groupTitle] = value;
+    });
+    
+    addToCart({ 
+      product, 
+      quantity, 
+      selectedOptions: selectedOptionsWithTitles, // Usamos títulos aquí
+      totalPrice 
+    });
   };
 
   if (loading) {
