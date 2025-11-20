@@ -1,4 +1,5 @@
-    import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { auth } from '../../firebase/config';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -21,17 +22,71 @@ export default function OrderModal({
   const [paymentMethod, setPaymentMethod] = useState<"Transferencia" | "Efectivo">("Transferencia");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<{name?: string; phone?: string}>({});
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [userHasProfile, setUserHasProfile] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
 
-  // Validar formato de teléfono ecuatoriano
-  const validatePhone = (phone: string): boolean => {
-    // Eliminar espacios, guiones, paréntesis, etc.
-    const cleanPhone = phone.replace(/\D/g, '');
+  // Obtener información del usuario al abrir el modal
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    setIsUserLoggedIn(!!currentUser);
     
-    // Validar que tenga exactamente 10 dígitos y empiece con 09
+    if (currentUser) {
+      checkUserProfile(currentUser.uid);
+    } else {
+      // Para usuarios no logueados, resetear estados
+      setUserHasProfile(false);
+      setIsEditingName(true);
+      setIsEditingPhone(true);
+    }
+  }, [isOpen]);
+
+  // Función para buscar el perfil del usuario en Firestore
+  const checkUserProfile = async (userId: string) => {
+    try {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../../firebase/config');
+      
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        
+        // Si tiene nombre guardado, usarlo
+        if (userData.displayName) {
+          setName(userData.displayName);
+          setUserHasProfile(true);
+          setIsEditingName(false);
+        } else {
+          setIsEditingName(true);
+        }
+        
+        // Si tiene teléfono guardado, usarlo
+        if (userData.phone) {
+          setPhone(userData.phone);
+          setUserHasProfile(true);
+          setIsEditingPhone(false);
+        } else {
+          setIsEditingPhone(true);
+        }
+      } else {
+        // Si no existe el documento, permitir edición
+        setIsEditingName(true);
+        setIsEditingPhone(true);
+      }
+    } catch (error) {
+      console.error("Error al obtener perfil del usuario:", error);
+      setIsEditingName(true);
+      setIsEditingPhone(true);
+    }
+  };
+
+  // Validaciones
+  const validatePhone = (phone: string): boolean => {
+    const cleanPhone = phone.replace(/\D/g, '');
     return /^09\d{8}$/.test(cleanPhone);
   };
 
-  // Validar formulario
   const validateForm = (): boolean => {
     const newErrors: {name?: string; phone?: string} = {};
 
@@ -49,12 +104,9 @@ export default function OrderModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Limpiar errores cuando el usuario empiece a escribir
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPhone(value);
-    
-    // Limpiar error de teléfono cuando el usuario empiece a escribir
     if (errors.phone) {
       setErrors(prev => ({ ...prev, phone: undefined }));
     }
@@ -72,8 +124,12 @@ export default function OrderModal({
       return;
     }
 
-    // Limpiar el número para WhatsApp (solo números)
     const cleanPhone = phone.replace(/\D/g, '');
+
+    // 🔥 GUARDAR NOMBRE Y TELÉFONO EN EL PERFIL DEL USUARIO SI ESTÁ LOGUEADO
+    if (isUserLoggedIn && auth.currentUser) {
+      saveUserProfileToFirestore(name, cleanPhone);
+    }
 
     onConfirm({
       name: name.trim(),
@@ -83,14 +139,45 @@ export default function OrderModal({
     });
   };
 
-  // 🔥 LIMPIAR ESTADOS CUANDO SE CIERRA EL MODAL
+  // 🔥 FUNCIÓN PARA GUARDAR EL PERFIL COMPLETO EN FIRESTORE
+  const saveUserProfileToFirestore = async (userName: string, userPhone: string) => {
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../../firebase/config');
+      
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const profileData: any = {
+          lastLogin: new Date()
+        };
+        
+        // Solo guardar nombre si no estaba guardado o si se editó
+        if (!userHasProfile || isEditingName) {
+          profileData.displayName = userName;
+        }
+        
+        // Solo guardar teléfono si no estaba guardado o si se editó
+        if (!userHasProfile || isEditingPhone) {
+          profileData.phone = userPhone;
+        }
+        
+        await setDoc(doc(db, "users", currentUser.uid), profileData, { merge: true });
+        
+        console.log("✅ Perfil actualizado en Firestore");
+        setUserHasProfile(true);
+      }
+    } catch (error) {
+      console.error("Error al guardar perfil:", error);
+    }
+  };
+
+  // Limpiar estados cuando se cierra el modal
   useEffect(() => {
     if (!isOpen) {
-      setName("");
-      setPhone("");
       setPaymentMethod("Transferencia");
       setNotes("");
       setErrors({});
+      // NO limpiar nombre y teléfono para mantenerlos para la próxima vez
     }
   }, [isOpen]);
 
@@ -120,36 +207,100 @@ export default function OrderModal({
         </div>
 
         {/* Nombre */}
-        <label className="text-brand-blue text-sm">Nombre *</label>
-        <input
-          className={`w-full mt-1 mb-1 px-3 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-brand-gold ${
-            errors.name ? 'border-red-500' : 'border-brand-gold'
-          }`}
-          placeholder="Ej: Sebastián Cruz"
-          value={name}
-          onChange={handleNameChange}
-        />
-        {errors.name && (
-          <p className="text-red-500 text-xs mb-2">{errors.name}</p>
-        )}
+        <div className="mb-3">
+          <label className="text-brand-blue text-sm block mb-1">
+            Nombre {isEditingName && "*"}
+          </label>
+          
+          {isEditingName ? (
+            // 🔥 MODO EDICIÓN: Campo de entrada
+            <div className="relative">
+              <input
+                className={`w-full px-3 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-brand-gold ${
+                  errors.name ? 'border-red-500' : 'border-brand-gold'
+                }`}
+                placeholder="Ej: Sebastián Cruz"
+                value={name}
+                onChange={handleNameChange}
+              />
+              {userHasProfile && (
+                <button
+                  onClick={() => setIsEditingName(false)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-brand-brown text-sm"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          ) : (
+            // 🔥 MODO VISUALIZACIÓN: Texto fijo con botón editar
+            <div className="p-3 bg-brand-cream border border-brand-gold rounded-lg relative">
+              <p className="text-brand-brown font-semibold pr-16">
+                👤 {name}
+              </p>
+              <button
+                onClick={() => setIsEditingName(true)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-brand-blue hover:text-brand-red text-sm font-semibold"
+              >
+                ✏️ Editar
+              </button>
+            </div>
+          )}
+          {errors.name && isEditingName && (
+            <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+          )}
+        </div>
 
         {/* WhatsApp */}
-        <label className="text-brand-blue text-sm">WhatsApp *</label>
-        <input
-          className={`w-full mt-1 mb-1 px-3 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-brand-gold ${
-            errors.phone ? 'border-red-500' : 'border-brand-gold'
-          }`}
-          placeholder="Ej: 0991234567"
-          value={phone}
-          onChange={handlePhoneChange}
-          maxLength={10}
-        />
-        {errors.phone && (
-          <p className="text-red-500 text-xs mb-2">{errors.phone}</p>
-        )}
-        <p className="text-xs text-gray-500 mb-3">
-          Formato: 09XXXXXXXX (10 dígitos)
-        </p>
+        <div className="mb-3">
+          <label className="text-brand-blue text-sm block mb-1">
+            WhatsApp {isEditingPhone && "*"}
+          </label>
+          
+          {isEditingPhone ? (
+            // 🔥 MODO EDICIÓN: Campo de entrada
+            <div className="relative">
+              <input
+                className={`w-full px-3 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-brand-gold ${
+                  errors.phone ? 'border-red-500' : 'border-brand-gold'
+                }`}
+                placeholder="Ej: 0991234567"
+                value={phone}
+                onChange={handlePhoneChange}
+                maxLength={10}
+              />
+              {userHasProfile && (
+                <button
+                  onClick={() => setIsEditingPhone(false)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-brand-brown text-sm"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          ) : (
+            // 🔥 MODO VISUALIZACIÓN: Texto fijo con botón editar
+            <div className="p-3 bg-brand-cream border border-brand-gold rounded-lg relative">
+              <p className="text-brand-brown font-semibold pr-16">
+                📱 {phone}
+              </p>
+              <button
+                onClick={() => setIsEditingPhone(true)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-brand-blue hover:text-brand-red text-sm font-semibold"
+              >
+                ✏️ Editar
+              </button>
+            </div>
+          )}
+          {errors.phone && isEditingPhone && (
+            <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+          )}
+          {isEditingPhone && (
+            <p className="text-xs text-gray-500 mt-1">
+              Formato: 09XXXXXXXX (10 dígitos)
+            </p>
+          )}
+        </div>
 
         {/* Método de pago */}
         <label className="text-brand-blue text-sm">Método de pago</label>

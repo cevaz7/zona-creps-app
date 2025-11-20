@@ -8,8 +8,7 @@ import { sendFCMPushDirect } from "@/utils/sendFCMPush";
 import { sendWhatsAppFree } from "@/utils/sendWhatsAppFree";
 import Image from "next/image";
 import { auth } from '../../firebase/config';
-
-
+import { useRouter } from 'next/navigation';
 
 interface PendingOrder {
   url: string;
@@ -18,6 +17,9 @@ interface PendingOrder {
 }
 
 export default function CartPanel() {
+
+  const router = useRouter();
+
   const {
     cartItems,
     isCartOpen,
@@ -106,7 +108,7 @@ export default function CartPanel() {
 
     try {
       // sendWhatsAppFree ahora devuelve la URL (según tu util actual)
-      const waUrl = sendWhatsAppFree(orderData, orderId);
+      const waUrl = await sendWhatsAppFree(orderData, orderId);
 
       // Intento abrir ventana (click del usuario)
       const newWin = window.open(waUrl, "_blank");
@@ -146,6 +148,11 @@ export default function CartPanel() {
       closeCart();
 
       setShowSuccessBanner(true);
+
+      setTimeout(() => {
+        router.push('/'); 
+      }, 2000);
+
       setTimeout(() => setShowSuccessBanner(false), 6000);
     } catch (err) {
       console.error("Error al confirmar pedido:", err);
@@ -222,7 +229,10 @@ export default function CartPanel() {
             </div>
           </div>
           <button
-            onClick={() => setShowSuccessBanner(false)}
+            onClick={() => {
+              setShowSuccessBanner(false);
+              router.push('/tienda');
+            }}
             className="text-white hover:text-gray-200 text-sm font-bold ml-2 shrink-0"
           >
             ×

@@ -1,4 +1,6 @@
 // utils/sendWhatsAppFree.ts
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 
 export const formatPhoneEcuador = (phone: string): string => {
   let clean = phone.replace(/[\s\-\(\)\+]/g, "");
@@ -7,12 +9,29 @@ export const formatPhoneEcuador = (phone: string): string => {
   return clean;
 };
 
-export const generateWhatsAppClientToAdminMessage = (
+// Función para obtener el número configurado de Firestore
+const getBusinessPhoneNumber = async (): Promise<string> => {
+  try {
+    const configDoc = await getDoc(doc(db, 'config', 'whatsapp'));
+    if (configDoc.exists()) {
+      return configDoc.data().phoneNumber;
+    }
+  } catch (error) {
+    console.error('Error obteniendo configuración de WhatsApp:', error);
+  }
+  
+  // Número por defecto si no hay configuración
+  return "09999931458";
+};
+
+export const generateWhatsAppClientToAdminMessage = async (
   orderData: any,
   orderId: string
-): string => {
-
-  const adminPhone = "593999931458"; 
+): Promise<string> => {
+  // Obtener el número configurado de Firestore
+  const adminPhoneRaw = await getBusinessPhoneNumber();
+  const adminPhone = formatPhoneEcuador(adminPhoneRaw);
+  
   const business = "Zona Creps";
 
   const orderNumber = orderId.slice(-8);
@@ -81,8 +100,8 @@ ${notesSection}
 ${paymentSection}
 📍 *Por favor envía tu ubicación para el delivery:*
 1. Toca el icono de 📎  
-2. Elige “Ubicación”  
-3. Selecciona “Ubicación actual”
+2. Elige "Ubicación"  
+3. Selecciona "Ubicación actual"
 
 🚗 Delivery gratuito en 5 km  
 ⏰ Tiempo estimado 20-30 minutos
@@ -92,6 +111,6 @@ ${paymentSection}
   return `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
 };
 
-export const sendWhatsAppFree = (orderData: any, orderId: string): string => {
-  return generateWhatsAppClientToAdminMessage(orderData, orderId);
+export const sendWhatsAppFree = async (orderData: any, orderId: string): Promise<string> => {
+  return await generateWhatsAppClientToAdminMessage(orderData, orderId);
 };
