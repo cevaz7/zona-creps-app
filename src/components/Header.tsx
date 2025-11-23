@@ -18,8 +18,6 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  
-
   useEffect(() => {
     setMounted(true);
     const handleScroll = () => {
@@ -94,6 +92,17 @@ const Header = () => {
                   Nosotros
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-brand-gold transition-all duration-300 group-hover:w-full"></span>
                 </Link>
+
+                {/* MIS PEDIDOS - NUEVO ENLACE */}
+                {user && (
+                  <Link 
+                    href="/mis-pedidos" 
+                    className="relative text-brand-cream hover:text-brand-gold transition-all duration-300 group font-medium text-sm uppercase tracking-wide"
+                  >
+                    Mis Pedidos
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-brand-gold transition-all duration-300 group-hover:w-full"></span>
+                  </Link>
+                )}
 
                 {/* Panel Admin */}
                 {isAdmin && (
@@ -205,6 +214,18 @@ const Header = () => {
                 >
                   Nosotros
                 </Link>
+                
+                {/* MIS PEDIDOS - MÓVIL */}
+                {user && (
+                  <Link 
+                    href="/mis-pedidos" 
+                    className="text-brand-cream hover:text-brand-gold transition-colors py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    📦 Mis Pedidos
+                  </Link>
+                )}
+
                 {isAdmin && (
                   <Link 
                     href="/admin" 
