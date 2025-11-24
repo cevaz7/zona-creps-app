@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     
     const adminUrl = `${baseUrl}/admin`;
 
-    // 🔥 CALCULAR PRECIOS REALES CON EXTRAS
+    //  CALCULAR PRECIOS REALES CON EXTRAS
     const formatItemsWithRealPrices = (items: any[]) => {
       return items?.map((item: any) => {
         // Usar totalPrice que incluye extras, o calcularlo
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         
         let itemText = `${item.quantity}x ${item.name} - $${realPrice.toFixed(2)}`;
         
-        // 🔥 AGREGAR EXTRAS SI EXISTEN
+        //  AGREGAR EXTRAS SI EXISTEN
         if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
           itemText += `<br><small style="color: #666; margin-left: 20px;">Extras: `;
           itemText += Object.entries(item.selectedOptions)
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     };
 
     const { data, error } = await resend.emails.send({
-      from: 'Notificaciones Zona Creps <notificaciones@resend.dev>',
+      from: 'Zonaf Creps <notificaciones@resend.dev>',
       to: adminEmails,
       subject: `🎉 Nuevo Pedido #${orderId.slice(-8)} - $${orderData.total?.toFixed(2) || '0.00'}`, // 🔥 FIX ORDER ID
       html: `
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Nuevo Pedido - Zona Creps</title>
+          <title>Nuevo Pedido - Zonaf Crep's</title>
           <style>
             body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; color: #333; }
             .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; }
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
           <div class="container">
             <div class="header">
               <h1 style="margin: 0; font-size: 24px;">¡Nuevo Pedido Recibido! 🎉</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.9;">Zona Creps - Sistema de Notificaciones</p>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">Zonaf Crep's - Sistema de Notificaciones</p>
             </div>
             
             <div class="content">
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
             </div>
             
             <div class="footer">
-              <p style="margin: 0;">Zona Creps &copy; ${new Date().getFullYear()} - Sistema de Notificaciones Automáticas</p>
+              <p style="margin: 0;">Zonaf Crep's &copy; ${new Date().getFullYear()} - Sistema de Notificaciones Automáticas</p>
               <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">
                 Si recibió este email por error, por favor ignórelo.
               </p>

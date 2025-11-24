@@ -1,18 +1,17 @@
-// src/app/admin/page.tsx (actualizado)
+// src/app/admin/page.tsx
 "use client";
 
 import { useAuth } from '@/hooks/useAuth';
-import AdminLogin from '@/components/AdminLogin';
-import { auth } from "../../../firebase/config";
-import ProductManager from '@/components/ProductManager';
 import { useUserRole } from "../../hooks/useUserRole";
 import Header from "../../components/Header";
+import ProductManager from '@/components/ProductManager';
 import NotificationsPanel from '@/components/NotificationsPanel'; 
 import { useState } from 'react'; 
 import NotificationPermission from '@/components/NotificationPermission';
 import AdminNotificationToast from '@/components/AdminNotificationToast';
 import WhatsAppConfigPanel from '@/components/WhatsAppConfigPanel';
 import AdminDashboardPanel from '@/components/AdminDashboardPanel'; 
+import LoginModal from '@/components/LoginModal'; 
 
 function AdminDashboard() {
   const [activeView, setActiveView] = useState<'products' | 'notifications' | 'config' | 'analytics'>('products'); 
@@ -23,13 +22,10 @@ function AdminDashboard() {
       <AdminNotificationToast />
       
       <div className="pt-24">
-
-        {/* Banner de notificaciones push */}
         <div className="container mx-auto px-4 mb-6">
           <NotificationPermission />
         </div>
 
-        {/* Navegación del Admin */}
         <div className="container mx-auto px-4">
           <div className="flex gap-2 mb-6 border-b pb-2 flex-wrap">
             <button 
@@ -66,11 +62,10 @@ function AdminDashboard() {
             </button>
           </div>
 
-          {/* Contenido dinámico */}
           <div className="mb-8">
             {activeView === 'products' && <ProductManager />}
             {activeView === 'notifications' && <NotificationsPanel />}
-            {activeView === 'analytics' && <AdminDashboardPanel />} {/* ← NUEVA PESTAÑA */}
+            {activeView === 'analytics' && <AdminDashboardPanel />}
             {activeView === 'config' && <WhatsAppConfigPanel />}
           </div>
         </div>
@@ -79,10 +74,10 @@ function AdminDashboard() {
   );
 }
 
-// ... el resto del código se mantiene igual
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const { role, loading: roleLoading } = useUserRole();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   if (authLoading || roleLoading) {
     return (
@@ -92,14 +87,44 @@ export default function AdminPage() {
     );
   }
 
+  // Si no hay usuario, mostrar modal de login
   if (!user) {
-    return <AdminLogin />;
+    return (
+      <>
+        <div className="flex items-center justify-center min-h-screen bg-brand-cream">
+          <div className="text-center">
+            <h1 className="font-display text-3xl font-bold text-brand-brown mb-4">
+              Panel de Administración
+            </h1>
+            <p className="text-gray-600 mb-6">Inicia sesión para acceder al panel</p>
+            <button 
+              onClick={() => setShowLoginModal(true)}
+              className="bg-brand-red text-white py-3 px-6 rounded-lg font-bold hover:bg-red-700 transition-colors"
+            >
+              Iniciar Sesión
+            </button>
+          </div>
+        </div>
+        
+        {showLoginModal && (
+          <LoginModal onClose={() => setShowLoginModal(false)} />
+        )}
+      </>
+    );
   }
 
+  // Verificar si es admin
   if (role !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen bg-brand-cream">
-        <p className="font-display text-2xl text-brand-brown">No tienes permiso para acceder a esta página.</p>
+        <div className="text-center">
+          <h1 className="font-display text-2xl text-brand-brown mb-4">
+            Acceso Denegado
+          </h1>
+          <p className="text-gray-600">
+            No tienes permisos de administrador para acceder a esta página.
+          </p>
+        </div>
       </div>
     );
   }

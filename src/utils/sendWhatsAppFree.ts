@@ -32,7 +32,7 @@ export const generateWhatsAppClientToAdminMessage = async (
   const adminPhoneRaw = await getBusinessPhoneNumber();
   const adminPhone = formatPhoneEcuador(adminPhoneRaw);
   
-  const business = "Zona Creps";
+  const business = "Zonaf Crep's";
 
   const orderNumber = orderId.slice(-8);
   const name = orderData.customerName;

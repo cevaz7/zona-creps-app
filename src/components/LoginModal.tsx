@@ -66,7 +66,7 @@ export default function LoginModal({ onClose }: Props) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      console.log('✅ Usuario autenticado con Google:', user.email);
+      
 
       // Verificar si el usuario ya existe en Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -81,12 +81,12 @@ export default function LoginModal({ onClose }: Props) {
           createdAt: new Date(),
           lastLogin: new Date()
         });
-        console.log('✅ Nuevo usuario creado en Firestore');
+        
       } else {
         await setDoc(doc(db, "users", user.uid), {
           lastLogin: new Date()
         }, { merge: true });
-        console.log('✅ Usuario actualizado en Firestore');
+        
       }
 
       // Esperar un poco antes de cerrar para asegurar que todo se complete
@@ -124,7 +124,7 @@ export default function LoginModal({ onClose }: Props) {
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
-        console.log('✅ Login exitoso con email');
+        
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -136,7 +136,7 @@ export default function LoginModal({ onClose }: Props) {
           createdAt: new Date(),
           lastLogin: new Date()
         });
-        console.log('✅ Usuario registrado con email');
+        
       }
       
       // Esperar antes de cerrar

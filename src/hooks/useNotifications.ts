@@ -47,19 +47,19 @@ export const useNotifications = () => {
   const [browserInfo, setBrowserInfo] = useState<any>(null);
   const [needsUserInteraction, setNeedsUserInteraction] = useState<boolean>(false);
   
-  // 🆕 ELIMINAR ESTADO DE ERROR DE STORAGE - NO LO NECESITAMOS
+  
   const isInitializedRef = useRef<boolean>(false);
   const permissionWatchRef = useRef<any>(null);
   const lastPermissionRef = useRef<NotificationPermission>('default');
 
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
-  // 🆕 INICIALIZACIÓN SIMPLIFICADA
+  
   useEffect(() => {
     if (isInitializedRef.current) return;
     isInitializedRef.current = true;
 
-    console.log('🚀 Inicializando notificaciones...');
+    
 
     // Verificar compatibilidad básica
     const isNotificationSupported = 'Notification' in window;
@@ -81,40 +81,38 @@ export const useNotifications = () => {
     setPermission(initialPermission);
     lastPermissionRef.current = initialPermission;
     
-    console.log('🌐 Navegador:', browser);
-    console.log('🔔 Permiso inicial:', initialPermission);
 
   }, [vapidKey]);
 
-  // 🆕 REGISTRO DE SERVICE WORKER SUPER SIMPLIFICADO
+  
   useEffect(() => {
     if (!isSupported || initialized) return;
 
     const registerServiceWorker = async () => {
       try {
-        console.log('🔧 Registrando Service Worker...');
+       
         
-        // 🆕 ESTRATEGIA: NO LIMPIAR NADA - dejar que el navegador maneje el storage
+        
         const existingRegistrations = await navigator.serviceWorker.getRegistrations();
         
-        // Solo desregistrar si hay conflictos
+        
         if (existingRegistrations.length > 1) {
-          console.log(`🧹 Encontrados ${existingRegistrations.length} SW - limpiando...`);
+          
           for (const registration of existingRegistrations) {
             await registration.unregister();
           }
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // 🆕 REGISTRO SIMPLE SIN CONFIGURACIONES COMPLEJAS
+        
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', FIREBASE_SW_CONFIG);
-        console.log('✅ Service Worker registrado');
+        
 
         setServiceWorkerRegistration(registration);
         setInitialized(true);
         
       } catch (error) {
-        console.error('❌ Error registrando Service Worker:', error);
+        
         // 🆕 NO DESACTIVAR SOPORTE - intentar de nuevo más tarde
         setTimeout(() => setInitialized(false), 5000);
       }
@@ -135,7 +133,7 @@ export const useNotifications = () => {
     try {
       const messaging = getMessaging(app);
 
-      console.log('🎯 Intentando obtener token FCM...');
+      
 
       // 🧩 Detectar Brave y salir sin romper flujo
       const ua = navigator.userAgent.toLowerCase();
@@ -146,7 +144,7 @@ export const useNotifications = () => {
         typeof (navigator as any).brave.isBrave === 'function');
 
       if (isBrave) {
-        console.warn('⚠️ Brave bloquea FCM por defecto.');
+        
         alert('⚠️ Brave bloquea las notificaciones push. Para activarlas, ve a Configuración → Escudos → Permitir servicios de Google FCM.');
         return;
       }
@@ -160,17 +158,17 @@ export const useNotifications = () => {
       });
 
       if (currentToken) {
-        console.log('✅ Token FCM obtenido:', currentToken.substring(0, 20) + '...');
+        
         setToken(currentToken);
         localStorage.setItem('fcm_token_debug', currentToken);
         await saveTokenToFirestore(currentToken);
       } else {
-        console.warn('⚠️ No se pudo obtener token. Puede ser un bloqueo del navegador.');
+        
       }
 
       // 📩 Escuchar mensajes en primer plano
       onMessage(messaging, (payload) => {
-        console.log('📨 Mensaje recibido:', payload);
+        
 
         if (payload.notification && getSafeNotificationPermission() === 'granted') {
           const { title, body } = payload.notification;
@@ -183,7 +181,7 @@ export const useNotifications = () => {
       });
 
     } catch (error) {
-      console.error('❌ Error obteniendo token FCM:', error);
+      
       // Evita romper en Brave o Edge
       if (error instanceof Error && error.message.includes('messaging')) {
         alert('⚠️ No se pudo inicializar las notificaciones. Verifica los permisos del navegador.');
@@ -195,7 +193,7 @@ export const useNotifications = () => {
   // INICIALIZAR MESSAGING CUANDO TODO ESTÉ LISTO
   useEffect(() => {
     if (isSupported && vapidKey && serviceWorkerRegistration && permission === 'granted' && initialized) {
-      console.log('🚀 Iniciando messaging...');
+      
       initializeMessaging();
     }
   }, [isSupported, vapidKey, serviceWorkerRegistration, permission, initialized]);
@@ -208,14 +206,11 @@ useEffect(() => {
       const currentPermission = getSafeNotificationPermission();
 
       if (lastPermissionRef.current !== currentPermission) {
-        console.log('🔍 Cambio de permisos detectado:', {
-          anterior: lastPermissionRef.current,
-          actual: currentPermission
-        });
+        
 
         // 🟢 Caso: usuario restauró permisos
         if (lastPermissionRef.current === 'denied' && currentPermission === 'granted') {
-          console.log('🎉 Permisos restaurados — reiniciando Service Worker y token...');
+          
           setPermission('granted');
           setToken('');
           localStorage.removeItem('fcm_token_debug');
@@ -228,11 +223,11 @@ useEffect(() => {
               await new Promise(r => setTimeout(r, 1000));
 
               const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', FIREBASE_SW_CONFIG);
-              console.log('✅ Service Worker reinstalado después de cambio de permisos');
+              
 
               setServiceWorkerRegistration(registration);
               setTimeout(() => {
-                console.log('🎯 Reintentando obtener token...');
+                
                 initializeMessaging();
               }, 1500);
             } catch (err) {
@@ -244,7 +239,7 @@ useEffect(() => {
         }
         // 🔴 Caso: usuario revocó permisos
         else if (lastPermissionRef.current === 'granted' && currentPermission !== 'granted') {
-          console.log('🚫 Permisos revocados, eliminando token...');
+          
           setPermission(currentPermission);
           setToken('');
           localStorage.removeItem('fcm_token_debug');
@@ -275,12 +270,12 @@ useEffect(() => {
 
       const handlePermissionChange = () => {
         if (Notification.permission === "granted" && !token) {
-          console.log("🔔 Permiso otorgado, intentando generar token nuevamente...");
+          
           const messaging = getMessaging(app);
           getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY })
             .then((newToken) => {
               if (newToken) {
-                console.log("✅ Nuevo token generado tras permitir:", newToken);
+                
                 setToken(newToken);
                 saveTokenToFirestore(newToken);
               } else {
@@ -310,7 +305,7 @@ useEffect(() => {
 
   const requestPermission = async () => {
     try {
-      console.log('🔔 Solicitando permiso de notificaciones...');
+      
 
       // 🧩 Detectar Brave
       const ua = navigator.userAgent.toLowerCase();
@@ -341,7 +336,7 @@ useEffect(() => {
         );
       }
 
-      console.log('🔔 Resultado del permiso:', permissionResult);
+      
       setPermission(permissionResult);
 
       if (permissionResult === 'granted') {
@@ -381,11 +376,11 @@ useEffect(() => {
         browser: browserInfo?.isEdge ? 'edge' : browserInfo?.isChrome ? 'chrome' : 'other'
       }, { merge: true });
       
-      console.log('✅ Token guardado en Firestore');
+      
       localStorage.removeItem('pending_fcm_token');
       
     } catch (error) {
-      console.error('❌ Error guardando token:', error);
+      
       localStorage.setItem('fcm_token_backup', token);
     }
   };
@@ -395,7 +390,7 @@ useEffect(() => {
     const auth = getAuth();
     
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('🔐 Usuario:', user ? `✅ ${user.email}` : '❌ No autenticado');
+      
       setUser(user);
       
       if (user && token) {
@@ -408,7 +403,7 @@ useEffect(() => {
 
   // 🆕 RESET SIMPLIFICADO
   const hardReset = async (): Promise<boolean> => {
-    console.log('🔄 Reiniciando sistema...');
+    
     
     // Resetear estados
     setToken('');
@@ -430,12 +425,12 @@ useEffect(() => {
       const fcmItems = ['fcm_token_debug', 'pending_fcm_token', 'fcm_token_backup'];
       fcmItems.forEach(key => localStorage.removeItem(key));
       
-      console.log('✅ Reset completado - recargando...');
+      
       setTimeout(() => window.location.reload(), 1000);
       return true;
       
     } catch (error) {
-      console.error('❌ Error en reset:', error);
+      
       return false;
     }
   };

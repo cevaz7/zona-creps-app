@@ -12,7 +12,7 @@ export default function NotificationPermission() {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setIsSupported(true);
       setPermission(Notification.permission);
-      console.log('🔔 Estado inicial de permisos:', Notification.permission);
+      
     }
   }, []);
 
@@ -20,7 +20,7 @@ export default function NotificationPermission() {
   const handleActivateNotifications = () => {
     if (!isSupported || isRequesting) return;
     
-    console.log('🎯 Iniciando solicitud de permisos...');
+    
     setIsRequesting(true);
     
     // 🆕 MÉTODO DIRECTO - SIN ASYNC/AWAIT INTERNO
@@ -35,7 +35,7 @@ export default function NotificationPermission() {
           console.log('🎉 Notificaciones activadas correctamente!');
           // Aquí podrías registrar el token FCM si usas Firebase
         } else if (result === 'default') {
-          console.log('ℹ️ Usuario cerró el popup sin decidir');
+          
         }
       })
       .catch((error) => {

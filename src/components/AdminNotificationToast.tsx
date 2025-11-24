@@ -13,12 +13,12 @@ export default function AdminNotificationToast() {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
 
   useEffect(() => {
-    console.log('🔔 [Toast] Componente montado - escuchando notificaciones');
+    
 
     const broadcastChannel = new BroadcastChannel('admin_notifications');
 
     const handleNewNotification = (notificationData: any) => {
-      console.log('🔔 [Toast] Nueva notificación recibida:', notificationData);
+      
       
       const newNotification: NotificationData = {
         title: notificationData.title || '¡Nuevo Pedido! 🎉',
@@ -27,7 +27,7 @@ export default function AdminNotificationToast() {
         total: notificationData.total || 0
       };
 
-      console.log('🔔 [Toast] Mostrando notificación:', newNotification);
+      
       
       setNotifications(prev => [...prev, newNotification]);
 
@@ -38,7 +38,7 @@ export default function AdminNotificationToast() {
     };
 
     const handleMessage = (event: any) => {
-      console.log('🔔 [Toast] Mensaje recibido:', event.data);
+      
       
       if (event.data.type === 'NEW_ORDER') {
         handleNewNotification(event.data.data);
@@ -47,12 +47,12 @@ export default function AdminNotificationToast() {
 
     broadcastChannel.addEventListener('message', handleMessage);
     
-    console.log('🔔 [Toast] Escuchando notificaciones de otras pestañas');
+    
 
     return () => {
       broadcastChannel.removeEventListener('message', handleMessage);
       broadcastChannel.close();
-      console.log('🔔 [Toast] Dejando de escuchar notificaciones');
+      
     };
   }, []);
 

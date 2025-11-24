@@ -16,13 +16,13 @@ const saveNotificationToFirestore = async (notificationData: any) => {
       sentTo: 'admin',
       createdAt: new Date()
     });
-    console.log('📝 Notificación guardada en Firestore');
+    
   } catch (error) {
     console.error('❌ Error guardando notificación:', error);
   }
 };
 
-// 🔥 FUNCIÓN PARA GUARDAR ORDEN EN FIRESTORE
+//  FUNCIÓN PARA GUARDAR ORDEN EN FIRESTORE
 const saveOrderToFirestore = async (orderData: any, orderId: string) => {
   try {
     await addDoc(collection(db, 'orders'), {
@@ -31,7 +31,7 @@ const saveOrderToFirestore = async (orderData: any, orderId: string) => {
       createdAt: new Date(),
       status: 'pending'
     });
-    console.log('📝 Orden guardada en Firestore');
+    
   } catch (error) {
     console.error('❌ Error guardando orden:', error);
   }
@@ -39,7 +39,7 @@ const saveOrderToFirestore = async (orderData: any, orderId: string) => {
 
 export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
   try {
-    console.log('📦 Procesando notificación para pedido:', orderId.substring(0, 8));
+    
 
     // 1. Obtener tokens de admins
     const usersSnapshot = await getDocs(collection(db, 'users'));
@@ -62,7 +62,7 @@ export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
       }
     });
 
-    console.log(`👑 ${adminTokens.length} admin(s) conectados`);
+    
 
     // 2. Preparar notificación
     const itemNames = orderData.items?.map((item: any) => 
@@ -78,7 +78,7 @@ export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
       timestamp: new Date().toISOString()
     };
 
-    // 3. 🔥 GUARDAR EN FIRESTORE
+    // 3.  GUARDAR EN FIRESTORE
     await saveNotificationToFirestore(notificationData);
     await saveOrderToFirestore(orderData, orderId);
 
@@ -88,11 +88,11 @@ export const sendFCMPushDirect = async (orderData: any, orderId: string) => {
         type: 'NEW_ORDER',
         data: notificationData
       });
-      console.log('✅ Notificación enviada a panel admin');
+      
     }
 
     // 5. Enviar notificación por email
-    console.log('📧 Enviando notificación por email...');
+    
     await sendEmailNotification(orderData, orderId);
 
   } catch (error) {

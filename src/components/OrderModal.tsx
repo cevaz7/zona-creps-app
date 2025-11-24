@@ -151,20 +151,25 @@ export default function OrderModal({
           lastLogin: new Date()
         };
         
-        // Solo guardar nombre si no estaba guardado o si se editó
+        // Solo agregar nombre si no estaba guardado o si se editó
         if (!userHasProfile || isEditingName) {
           profileData.displayName = userName;
         }
         
-        // Solo guardar teléfono si no estaba guardado o si se editó
+        // Solo agregar teléfono si no estaba guardado o si se editó
         if (!userHasProfile || isEditingPhone) {
           profileData.phone = userPhone;
         }
         
-        await setDoc(doc(db, "users", currentUser.uid), profileData, { merge: true });
-        
-        console.log("✅ Perfil actualizado en Firestore");
-        setUserHasProfile(true);
+        // Solo guardar si hay datos adicionales además de lastLogin
+        // o si es la primera vez (no tiene perfil)
+        if (!userHasProfile || isEditingName || isEditingPhone) {
+          await setDoc(doc(db, "users", currentUser.uid), profileData, { merge: true });
+          console.log("✅ Perfil actualizado en Firestore");
+          setUserHasProfile(true);
+        } else {
+          
+        }
       }
     } catch (error) {
       console.error("Error al guardar perfil:", error);

@@ -31,6 +31,7 @@ const ProductCard = ({ producto }: Props) => {
           src={producto.imagenUrl || 'https://placehold.co/600x400/F5EFE6/6B240C?text=Zonaf+Creps'}
           alt={`Imagen de ${producto.nombre}`}
           fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className={`object-cover transition-all duration-700 ${
             imageLoaded 
               ? 'opacity-100 scale-100' 

@@ -7,7 +7,7 @@ export default function ServiceWorkerInitializer() {
     const registerSW = async () => {
       // 🆕 VERIFICAR SI ES LOCALHOST (OPCIONAL)
       if (window.location.hostname === 'localhost') {
-        console.log('🔧 Desarrollo local - Service Worker en modo prueba');
+        
         // Puedes comentar esta línea si quieres probar en localhost
         // return;
       }
@@ -19,21 +19,21 @@ export default function ServiceWorkerInitializer() {
       }
 
       try {
-        console.log('🔧 Registrando Service Worker profesional...');
+        
         
         // Registrar Service Worker
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
           scope: '/'
         });
         
-        console.log('✅ Service Worker registrado:', registration);
+        
         
         // Verificar permisos push
         const permission = await registration.pushManager.permissionState({userVisibleOnly: true});
-        console.log('Estado de permisos Push:', permission);
+        
         
         if (permission === 'granted') {
-          console.log('✅ Sistema de notificaciones listo para producción');
+          
           
           // ENVIAR CONFIGURACIÓN SEGURA A FIREBASE
           registration.active?.postMessage({
@@ -48,7 +48,7 @@ export default function ServiceWorkerInitializer() {
             }
           });
         } else {
-          console.log('ℹ️ Permisos push actuales:', permission);
+          
         }
         
         // Manejar actualizaciones del Service Worker

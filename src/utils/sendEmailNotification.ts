@@ -11,7 +11,7 @@ const getAdminEmails = async (): Promise<string[]> => {
       const userData = doc.data();
       if (userData.role === 'admin' && userData.email) {
         adminEmails.push(userData.email);
-        console.log(`👑 Admin encontrado: ${userData.email}`);
+        
       }
     });
     
@@ -28,11 +28,11 @@ export const sendEmailNotification = async (orderData: any, orderId: string) => 
     const adminEmails = await getAdminEmails();
     
     if (adminEmails.length === 0) {
-      console.log('🔕 No se encontraron admins con email');
+      
       return false;
     }
 
-    console.log(`📧 Enviando email a ${adminEmails.length} admin(s) via API...`);
+    
 
     const response = await fetch('/api/send-email', {
       method: 'POST',
@@ -49,11 +49,11 @@ export const sendEmailNotification = async (orderData: any, orderId: string) => 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Error enviando email via API:', result.error);
+      
       return false;
     }
 
-    console.log('✅ Email enviado correctamente via API');
+    
     return true;
 
   } catch (error) {

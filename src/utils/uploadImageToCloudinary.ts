@@ -1,6 +1,6 @@
 export async function uploadImageToCloudinary(file: File): Promise<string> {
-  const CLOUD_NAME = "TU_CLOUD_NAME"; // 👈 reemplaza con tu cloud_name
-  const UPLOAD_PRESET = "TU_UPLOAD_PRESET"; // 👈 reemplaza con tu upload_preset
+  const CLOUD_NAME = "TU_CLOUD_NAME"; 
+  const UPLOAD_PRESET = "TU_UPLOAD_PRESET"; 
 
   const formData = new FormData();
   formData.append("file", file);

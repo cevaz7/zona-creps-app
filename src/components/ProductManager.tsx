@@ -6,9 +6,9 @@ import { collection, onSnapshot, query, orderBy,doc, deleteDoc } from 'firebase/
 import { db } from "../../firebase/config";
 import { Producto } from '@/interfaces/Product';
 import Image from 'next/image';
-import ProductForm from './ProductForm'; // Importamos el nuevo formulario
-import CategoryManager from './CategoryManager'; // Importamos el gestor de categorías
-import OptionGroupManager from './OptionGroupManager'; // Importamos el gestor de opciones
+import ProductForm from './ProductForm'; 
+import CategoryManager from './CategoryManager'; 
+import OptionGroupManager from './OptionGroupManager'; 
 
 type View = 'list' | 'create' | 'edit' | 'categories' | 'options';
 
@@ -87,7 +87,15 @@ export default function ProductManager() {
               {products.map(product => (
                 <tr key={product.id} className="border-b hover:bg-gray-50">
                   <td className="p-4">
-                    <Image src={product.imagenUrl || 'https://placehold.co/60x60/F5EFE6/6B240C?text=Foto'} alt={product.nombre} width={60} height={60} className="rounded-md object-cover" />
+                    <div className="w-15 h-15 overflow-hidden rounded-md">
+                      <Image 
+                        src={product.imagenUrl || 'https://placehold.co/60x60/F5EFE6/6B240C?text=Foto'} 
+                        alt={product.nombre} 
+                        width={60} 
+                        height={60} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   </td>
                   <td className="p-4 font-semibold text-gray-700">{product.nombre}</td>
                   <td className="p-4">

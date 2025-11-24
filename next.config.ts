@@ -21,6 +21,7 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
+    qualities: [75, 85, 100],
   },
   
   async headers() {

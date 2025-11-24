@@ -1,11 +1,11 @@
-// utils/sendNotification.ts - VERSIÓN QUE SÍ LLAMA A FCM
+// utils/sendNotification.ts
 import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { sendFCMPushDirect } from './sendFCMPush'; // ← Asegúrate que este import sea correcto
+import { sendFCMPushDirect } from './sendFCMPush'; 
 
 export const sendNewOrderNotification = async (orderData: any) => {
   try {
-    console.log('🔄 Creando pedido y notificaciones...');
+    
 
     // 1. Guardar el pedido en Firestore
     const orderRef = doc(collection(db, 'orders'));
@@ -19,7 +19,7 @@ export const sendNewOrderNotification = async (orderData: any) => {
     };
 
     await setDoc(orderRef, completeOrderData);
-    console.log('✅ Pedido guardado en Firestore:', orderId);
+    
 
     // 2. Crear notificación en Firestore (para el panel admin)
     const notificationRef = doc(collection(db, 'notifications'));
@@ -40,18 +40,18 @@ export const sendNewOrderNotification = async (orderData: any) => {
       sentTo: 'admin'
     });
 
-    console.log('✅ Notificación en Firestore creada');
-
-    // 3. 🔥🔥🔥 LLAMAR REALMENTE A LA FUNCIÓN FCM
-    console.log('🚀 Llamando a sendFCMPushDirect...');
-    await sendFCMPushDirect(orderData, orderId);
-    console.log('✅ sendFCMPushDirect completado');
     
-    console.log('✅ Flujo completado - Notificaciones enviadas a administradores');
+
+    // 3. LLAMAR REALMENTE A LA FUNCIÓN FCM
+    
+    await sendFCMPushDirect(orderData, orderId);
+    
+    
+    
     return true;
     
   } catch (error) {
-    console.error('❌ Error en el flujo de notificaciones:', error);
+    
     return false;
   }
 };
