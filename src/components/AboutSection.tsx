@@ -1,4 +1,6 @@
 // src/components/AboutSection.tsx
+import Image from 'next/image';
+
 export default function AboutSection() {
   return (
     <section id="about" className="py-20 bg-white">
@@ -29,10 +31,13 @@ export default function AboutSection() {
               </div>
               
               <div className="relative h-80 rounded-2xl overflow-hidden shadow-lg">
-                 {/* Idealmente aquí va una imagen real de tu local */}
-                <div className="bg-brand-blue w-full h-full flex items-center justify-center">
-                   <p className="text-brand-gold font-display text-2xl text-center p-4">Imagen de nuestro local</p>
-                </div>
+                <Image 
+                  src="/local/localcreps.jpg" 
+                  alt="Local de Zonaf Creps" 
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
               </div>
             </div>
           </div>
