@@ -337,7 +337,7 @@ export default function OrderModal({
         <label className="text-brand-blue text-sm">Notas (opcional)</label>
         <textarea
           className="w-full mt-1 mb-4 px-3 py-2 bg-white border border-brand-gold rounded-lg focus:ring-2 focus:ring-brand-gold"
-          placeholder="Ej: sin cebolla, por favor"
+          placeholder="Ej: sin crema, por favor"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />

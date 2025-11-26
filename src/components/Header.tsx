@@ -9,6 +9,7 @@ import { auth } from '../../firebase/config';
 import LoginModal from './LoginModal';
 import { useCart } from '@/context/CartContext';
 import CartPanel from './CartPanel';
+import Image from 'next/image';
 
 const Header = () => {
   const { user, isAdmin } = useAuthContext();
@@ -65,8 +66,15 @@ const Header = () => {
               href="/" 
               className="group relative"
             >
-              <div className="text-white font-display text-3xl font-bold transition-all duration-300 group-hover:scale-105">
-                ZONAF <span className="text-brand-red transition-colors duration-300 group-hover:text-red-400">CREP'S</span>
+              {/* Imagen del logo optimizada */}
+              <div className="transition-all duration-300 group-hover:scale-105">
+                <Image 
+                  src="/logos/logoheader.jpg" 
+                  alt="Zonaf Crep's" 
+                  width={150} // Ajusta según el tamaño de tu logo
+                  height={40}
+                  className="h-10 w-auto object-contain"
+                />
               </div>
               {/* Efecto de subrayado animado */}
               <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-brand-gold to-brand-red transition-all duration-500 group-hover:w-full"></div>

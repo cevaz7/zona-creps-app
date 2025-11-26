@@ -43,13 +43,22 @@ export const generateWhatsAppClientToAdminMessage = async (
   // 🛒 LISTA DE PRODUCTOS
   // ---------------------------
   const productsList = orderData.items
-    .map(
-      (item: any) =>
-        `• ${item.quantity}x ${item.name} - $${(
-          item.totalPrice ||
-          item.quantity * item.price
-        ).toFixed(2)}`
-    )
+    .map((item: any) => {
+      let itemText = `• ${item.quantity}x ${item.name} - $${(
+        item.totalPrice ||
+        item.quantity * item.price
+      ).toFixed(2)}`;
+
+      // 🔥 AGREGAR OPCIONES SELECCIONADAS COMO EN EL EMAIL
+      if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
+        itemText += `\n  └─ `;
+        itemText += Object.entries(item.selectedOptions)
+          .map(([key, value]) => `${value}`) // Solo el valor, como en el email
+          .join(', ');
+      }
+
+      return itemText;
+    })
     .join("\n");
 
   // ---------------------------

@@ -334,13 +334,28 @@ export default function CartPanel() {
           </div>
 
           <div className="space-y-2">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              disabled={cartItems.length === 0 || isProcessing}
-              className="w-full py-3 rounded-full font-bold text-white bg-brand-red hover:bg-red-700 disabled:opacity-60 transition-colors"
-            >
-              {isProcessing ? "Procesando..." : "Finalizar Pedido"}
-            </button>
+            {/* Botones en fila para pantallas grandes, columna para móviles */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              {/* Botón Seguir Pidiendo */}
+              <button
+                onClick={() => {
+                  closeCart();
+                  router.push('/tienda'); // O la ruta de tus productos
+                }}
+                className="flex-1 py-3 rounded-full font-bold border-2 border-brand-blue text-brand-blue bg-white hover:bg-brand-blue hover:text-white transition-colors"
+              >
+                Seguir Pidiendo
+              </button>
+
+              {/* Botón Finalizar Pedido */}
+              <button
+                onClick={() => setIsModalOpen(true)}
+                disabled={cartItems.length === 0 || isProcessing}
+                className="flex-1 py-3 rounded-full font-bold text-white bg-brand-red hover:bg-red-700 disabled:opacity-60 transition-colors"
+              >
+                {isProcessing ? "Procesando..." : "Finalizar Pedido"}
+              </button>
+            </div>
 
             {cartItems.length > 0 && (
               <button

@@ -40,7 +40,7 @@ export default function Hero() {
           isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
         }`}>
           <h1 className="font-display text-5xl md:text-7xl font-bold text-white mb-4">
-            ZONAF CREP'S
+            ZONAF CREP'S MOJOR
           </h1>
           <div className="w-32 h-1 bg-brand-gold mx-auto mb-6"></div>
           <h2 className="font-display text-2xl md:text-3xl text-brand-gold font-light italic">

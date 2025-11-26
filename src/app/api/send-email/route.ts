@@ -79,7 +79,7 @@ export async function POST(request: Request) {
                     if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
                       itemHtml += `<div class="extras">`;
                       itemHtml += Object.entries(item.selectedOptions)
-                        .map(([key, value]) => `• ${key}: ${value}`)
+                        .map(([key, value]) => `• ${value}`)
                         .join('<br>');
                       itemHtml += `</div>`;
                     }

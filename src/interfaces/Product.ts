@@ -19,6 +19,7 @@ export interface OptionGroup {
   titulo: string; // ej. "Sabores de Helado", "Toppings"
   tipo: 'radio' | 'checkbox'; // radio: seleccionar solo uno, checkbox: seleccionar varios
   opciones: SubOpcion[];
+  required?: boolean;
 }
 
 export interface Producto {

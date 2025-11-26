@@ -30,6 +30,8 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({});
   const [totalPrice, setTotalPrice] = useState(0);
+  const [errors, setErrors] = useState<{[groupId: string]: string}>({});
+  const [canAddToCart, setCanAddToCart] = useState(false);
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
@@ -60,6 +62,33 @@ export default function ProductDetailPage() {
     };
     getProductData();
   }, [id]);
+
+  useEffect(() => {
+    if (!product || optionGroups.length === 0) {
+      setCanAddToCart(true);
+      return;
+    }
+
+    const newErrors: {[groupId: string]: string} = {};
+    let isValid = true;
+
+    optionGroups.forEach(group => {
+      // Verificar si este grupo es obligatorio
+      if (group.required) {
+        const currentSelection = selectedOptions[group.id];
+        
+        if (!currentSelection || 
+            (Array.isArray(currentSelection) && currentSelection.length === 0) ||
+            (typeof currentSelection === 'string' && currentSelection === '')) {
+          newErrors[group.id] = `Debes seleccionar al menos una opción de ${group.titulo}`;
+          isValid = false;
+        }
+      }
+    });
+
+    setErrors(newErrors);
+    setCanAddToCart(isValid);
+  }, [selectedOptions, optionGroups, product]);
 
   // useEffect de Precios
   useEffect(() => {
@@ -120,6 +149,12 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     if (!product) return;
     
+    // Validar nuevamente antes de agregar
+    if (!canAddToCart) {
+      alert('Por favor completa todas las opciones obligatorias antes de agregar al carrito');
+      return;
+    }
+      
     // Crear selectedOptions con títulos en lugar de IDs
     const selectedOptionsWithTitles: any = {};
     
@@ -132,9 +167,12 @@ export default function ProductDetailPage() {
     addToCart({ 
       product, 
       quantity, 
-      selectedOptions: selectedOptionsWithTitles, // Usamos títulos aquí
+      selectedOptions: selectedOptionsWithTitles,
       totalPrice 
     });
+    
+    // Opcional: Mostrar mensaje de éxito
+    alert('¡Producto agregado al carrito!');
   };
 
   if (loading) {
@@ -164,7 +202,7 @@ export default function ProductDetailPage() {
   return (
     <div className="bg-brand-cream min-h-screen">
       <Header />
-      <main className="container mx-auto px-4 py-12">
+      <main className="container mx-auto px-16 py-20">
         <div className="bg-white p-8 rounded-2xl shadow-xl grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Columna de Imagen */}
           <div>
@@ -202,11 +240,19 @@ export default function ProductDetailPage() {
                   includedText = `(Incluye ${productRule.includedSubOptions.length})`;
                 }
 
+                const requiredIndicator = group.required ? ' *' : '';
+
                 return (
                   <div key={group.id}>
                     <h3 className="font-bold text-xl text-brand-blue mb-3">
                       {group.titulo} <span className="text-sm font-normal text-gray-500">{includedText}</span>
                     </h3>
+                        {/* Mostrar error si existe */}
+                        {errors[group.id] && (
+                          <p className="text-red-500 text-sm mb-2 bg-red-50 p-2 rounded border border-red-200">
+                            ⚠️ {errors[group.id]}
+                          </p>
+                        )}
                     <div className="space-y-2">
                       {group.opciones.map(option => {
                         // Verificamos si esta opción es gratis
@@ -247,9 +293,17 @@ export default function ProductDetailPage() {
                 <p className="font-display text-4xl text-brand-red font-bold">${totalPrice.toFixed(2)}</p>
               </div>
             </div>
-            <button onClick={handleAddToCart} className="w-full bg-brand-red text-white font-bold text-lg py-4 rounded-full mt-6 hover:bg-red-700 transition-colors">
-              Añadir al Carrito
-            </button>
+              <button 
+                onClick={handleAddToCart} 
+                disabled={!canAddToCart}
+                className={`w-full font-bold text-lg py-4 rounded-full mt-6 transition-colors ${
+                  canAddToCart 
+                    ? 'bg-brand-red text-white hover:bg-red-700' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {canAddToCart ? 'Añadir al Carrito' : 'Selecciona las opciones obligatorias'}
+              </button>
           </div>
         </div>
 

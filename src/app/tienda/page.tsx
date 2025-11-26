@@ -61,8 +61,7 @@ export default function TiendaPage() {
   return (
     <div className="min-h-screen bg-brand-cream">
       <Header />
-      <main>
-        {/* Usamos el mismo componente MenuSection que ya tienes */}
+      <main className="pt-8 md:pt-12">
         <MenuSection productos={products} categorias={categories} loading={loading} />
       </main>
       <Footer />
