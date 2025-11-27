@@ -62,7 +62,18 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     });
 
     if (productToEdit) {
-      setFormData(productToEdit);
+      // Convertir la estructura vieja a la nueva si es necesario
+      const updatedProduct = { ...productToEdit };
+      if (updatedProduct.linkedOptions) {
+        updatedProduct.linkedOptions = updatedProduct.linkedOptions.map(option => ({
+          groupId: option.groupId,
+          groupTitle: option.groupTitle,
+          includedCount: option.includedCount || 0, // Si no existe, usar 0
+          minSelections: option.minSelections || (option.includedCount ? 1 : 0), // Default basado en includedCount
+          maxSelections: option.maxSelections || 10 // Default
+        }));
+      }
+      setFormData(updatedProduct);
     }
 
     return () => {
@@ -96,6 +107,7 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     }));
   };
 
+  // 🔹 NUEVA FUNCIÓN: Manejar la vinculación de grupos de opciones
   const handleOptionGroupToggle = (group: OptionGroup) => {
     setFormData(prev => {
       const currentOptions = prev.linkedOptions || [];
@@ -105,27 +117,26 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
       if (isSelected) {
         newLinkedOptions = currentOptions.filter(opt => opt.groupId !== group.id);
       } else {
+        // 🔹 NUEVA ESTRUCTURA: Usar includedCount en lugar de includedSubOptions
         newLinkedOptions = [...currentOptions, {
           groupId: group.id,
           groupTitle: group.titulo,
-          includedSubOptions: []
+          includedCount: 1, // Default: 1 opción incluida
+          minSelections: group.tipo === 'radio' ? 1 : 1, // Default: mínimo 1
+          maxSelections: group.tipo === 'radio' ? 1 : 3  // Default: radio=1, checkbox=3
         }];
       }
       return { ...prev, linkedOptions: newLinkedOptions };
     });
   };
 
-  const handleIncludedSubOptionToggle = (groupId: string, subOptionName: string) => {
+  // 🔹 NUEVA FUNCIÓN: Actualizar la configuración de un grupo vinculado
+  const updateLinkedOptionConfig = (groupId: string, field: keyof LinkedOption, value: any) => {
     setFormData(prev => {
       const currentOptions = prev.linkedOptions || [];
       const newLinkedOptions = currentOptions.map(link => {
         if (link.groupId === groupId) {
-          const currentIncluded = link.includedSubOptions || [];
-          const isIncluded = currentIncluded.includes(subOptionName);
-          const newIncluded = isIncluded
-            ? currentIncluded.filter(name => name !== subOptionName)
-            : [...currentIncluded, subOptionName];
-          return { ...link, includedSubOptions: newIncluded };
+          return { ...link, [field]: value };
         }
         return link;
       });
@@ -137,7 +148,7 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     e.preventDefault();
     setLoading(true);
 
-    // 🔹 PREPARAR DATOS CON LA URL ACTUAL (ya se actualizó en handleImageChange)
+    // 🔹 PREPARAR DATOS CON LA NUEVA ESTRUCTURA
     const productData = { 
       ...formData,
       precioBase: Number(formData.precioBase) || 0,
@@ -221,7 +232,7 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
           </div>
         )}
 
-        {/* Sección de grupos de opciones */}
+        {/* 🔹 SECCIÓN ACTUALIZADA: Grupos de opciones con nueva estructura */}
         <hr className="my-4" />
         <h3 className="text-xl font-bold text-brand-blue">Vincular Grupos de Opciones</h3>
         <div className="space-y-4">
@@ -237,23 +248,57 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
                     checked={isSelected} 
                     onChange={() => handleOptionGroupToggle(group)}
                   /> 
-                  <span className="font-semibold text-lg">{group.titulo}</span>
+                  <span className="font-semibold text-lg">{group.titulo} ({group.tipo})</span>
                 </label>
 
-                {isSelected && (
+                {isSelected && linkedOption && (
                   <div className="mt-3 pl-6 border-l-2 border-brand-gold">
-                    <p className="text-sm font-bold text-gray-600 mb-2">Marcar opciones incluidas (gratis):</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {group.opciones.map(subOpt => (
-                        <label key={subOpt.nombre} className="flex items-center space-x-2 text-sm">
-                          <input 
-                            type="checkbox"
-                            checked={(linkedOption.includedSubOptions || []).includes(subOpt.nombre)}
-                            onChange={() => handleIncludedSubOptionToggle(group.id, subOpt.nombre)}
-                          />
-                          <span>{subOpt.nombre} (+${subOpt.precioAdicional.toFixed(2)})</span>
-                        </label>
-                      ))}
+                    <p className="text-sm font-bold text-gray-600 mb-2">Configuración de opciones:</p>
+                    
+                    <div className="grid grid-cols-3 gap-4 mb-3">
+                      {/* Opciones Incluidas */}
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Incluidas</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={linkedOption.includedCount || 0}
+                          onChange={(e) => updateLinkedOptionConfig(group.id, 'includedCount', parseInt(e.target.value) || 0)}
+                          className="w-full p-1 border rounded text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Opciones gratis</p>
+                      </div>
+
+                      {/* Mínimo de selecciones */}
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Mínimo</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={linkedOption.minSelections || 1}
+                          onChange={(e) => updateLinkedOptionConfig(group.id, 'minSelections', parseInt(e.target.value) || 1)}
+                          className="w-full p-1 border rounded text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Mínimo a elegir</p>
+                      </div>
+
+                      {/* Máximo de selecciones */}
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Máximo</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={linkedOption.maxSelections || (group.tipo === 'radio' ? 1 : 3)}
+                          onChange={(e) => updateLinkedOptionConfig(group.id, 'maxSelections', parseInt(e.target.value) || 1)}
+                          className="w-full p-1 border rounded text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Máximo permitido</p>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-600 bg-white p-2 rounded border">
+                      <p><strong>Resumen:</strong> El cliente deberá seleccionar entre <strong>{linkedOption.minSelections || 1}</strong> y <strong>{linkedOption.maxSelections || (group.tipo === 'radio' ? 1 : 3)}</strong> opciones.</p>
+                      <p>Las primeras <strong>{linkedOption.includedCount || 0}</strong> opciones serán gratis.</p>
                     </div>
                   </div>
                 )}
@@ -272,5 +317,3 @@ export default function ProductForm({ productToEdit, onClose }: Props) {
     </div>
   );
 }
-
-

@@ -11,8 +11,10 @@ export interface SubOpcion {
 }
 export interface LinkedOption {
   groupId: string;
-  groupTitle: string; // Guardamos el título para mostrarlo
-  includedSubOptions: string[]; // Cuántos de este grupo son "gratis" (0, 1, 2...)
+  groupTitle: string;
+  includedCount: number;    // Número de opciones incluidas (0, 1, 2...)
+  minSelections?: number;   // Mínimo obligatorio a seleccionar
+  maxSelections?: number;   // Máximo permitido
 }
 export interface OptionGroup {
   id: string;

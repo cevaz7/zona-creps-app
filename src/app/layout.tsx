@@ -7,6 +7,7 @@ import { CartProvider } from "@/context/CartContext";
 import ServiceWorkerInitializer from "@/components/ServiceWorkerInitializer";
 import NotificationPermission from "@/components/NotificationPermission"; // 🆕 IMPORTAR
 import NotificationInitializer from "@/components/NotificationInitializer"; // 🆕 IMPORTAR
+import LocalBusinessSchema from "@/components/LocalBusinessSchema";
 
 const montserrat = Montserrat({ 
   subsets: ["latin"], 
@@ -21,8 +22,41 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata = {
-  title: "Zonaf Crep's - Un viaje de sabores..!",
-  description: "La mejor experiencia en crepes, waffles, helados y más.",
+  title: "Zonaf Crep's Mojor – Crepes, Waffles y Frappés",
+  description:
+    "Crepes, waffles, frappés, helados y más en Mojor. Delivery rápido, sabores increíbles y combos especiales todos los días.",
+  keywords: [
+    "crepes",
+    "waffles",
+    "frappés",
+    "helados",
+    "postres",
+    "Mojor",
+    "Zonaf Creps Mojor",
+    "crepes Ecuador",
+    "waffles Ecuador",
+    "postres Mojor",
+  ],
+  openGraph: {
+    title: "Zonaf Crep's Mojor",
+    description:
+      "Las mejores crepes, waffles y frappés en Mojor 🇪🇨. Calidad, sabor y delivery rápido.",
+    url: "https://zonafcrepsmojor.ec",
+    siteName: "Zonaf Crep's Mojor",
+    images: [
+      {
+        url: "/logoheader.jpg", // asegúrate que exista en /public
+        width: 800,
+        height: 600,
+      },
+    ],
+    locale: "es_EC",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${montserrat.variable} ${playfairDisplay.variable} font-body bg-brand-cream`}>
         <AuthProvider>
           <CartProvider>
+            <LocalBusinessSchema />
             <footer>
               <NotificationPermission />
               <NotificationInitializer/>
